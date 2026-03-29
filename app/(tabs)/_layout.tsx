@@ -1,33 +1,44 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+      screenOptions={({ route }) => ({
+        tabBarActiveTintColor: "#007AFF", // active tab color
+        tabBarInactiveTintColor: "#8e8e93", // inactive tab color
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          height: 60,
+          paddingBottom: 5,
+        },
+        headerStyle: { backgroundColor: "#f0f2f5" },
+        headerTitleStyle: { fontWeight: "bold" },
+        tabBarIcon: ({ color, size }) => {
+          let iconName: keyof typeof Ionicons.glyphMap;
+
+          if (route.name === "Home") {
+            iconName = "home-outline";
+          } else if (route.name === "QrScanner") {
+            iconName = "barcode";
+          } else {
+            iconName = "ellipse-outline";
+          }
+
+          return <Ionicons name={iconName} size={size} color={color} />;
+        },
+      })}
+    >
       <Tabs.Screen
-        name="index"
+        name="Home"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "Dashboard",
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="QrScanner"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "Scanner",
         }}
       />
     </Tabs>
