@@ -2,15 +2,15 @@ import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useState } from "react";
 
-//import { getData } from "../javascript/ProfileAPI";
+import { getData } from "../javascript/ProfileAPI";
 
 import {
-    Alert,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 export default function LoginView() {
@@ -69,8 +69,7 @@ export default function LoginView() {
 
       const data = await response.json();
       await SecureStore.setItemAsync("accessToken", data.token);
-      // await getData();
-
+      await getData();
       router.replace("/Home");
     } catch (err) {
       console.error(err);
