@@ -22,7 +22,7 @@ export default function LoginView() {
     const autoLogin = async () => {
       try {
         const res = await fetch(
-          "http://192.168.1.156:8000/auth/refresh-token",
+          "http://192.168.1.141:8000/auth/refresh-token",
           {
             method: "POST",
             credentials: "include",
@@ -53,7 +53,7 @@ export default function LoginView() {
   const handleSubmit = async () => {
     try {
       const response = await fetch(
-        "http://10.123.13.106:8000/auth/login/employee",
+        "http://192.168.1.141:8000/auth/login/employee",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
