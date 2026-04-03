@@ -21,7 +21,7 @@ export default function QRScannerScreen() {
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
-
++
   useEffect(() => {
     requestPermission();
   }, []);
@@ -47,7 +47,7 @@ export default function QRScannerScreen() {
       });
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      console.log("Backend response:", res);
+    //  console.log("Backend response:", res);
     } catch (err) {
       Alert.alert("Error", err.message || "Something went wrong");
     } finally {

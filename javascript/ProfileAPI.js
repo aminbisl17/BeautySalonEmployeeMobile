@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 
 export async function getData() {
   const token = await SecureStore.getItemAsync("accessToken");
-  const userRes = await fetch("http://192.168.100.116:8000/api/employee/data", {
+  const userRes = await fetch("http://10.123.13.106:8000/api/employee/data", {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });

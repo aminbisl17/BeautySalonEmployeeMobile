@@ -53,7 +53,7 @@ export default function LoginView() {
   const handleSubmit = async () => {
     try {
       const response = await fetch(
-        "http://192.168.100.116:8000/auth/login/employee",
+        "http://10.123.13.106:8000/auth/login/employee",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
