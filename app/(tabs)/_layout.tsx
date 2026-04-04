@@ -21,6 +21,8 @@ export default function TabLayout() {
             iconName = "home-outline";
           } else if (route.name === "QrScanner") {
             iconName = "barcode";
+          } else if (route.name === "Profile") {
+            iconName = "person-outline";
           } else {
             iconName = "ellipse-outline";
           }
@@ -29,6 +31,13 @@ export default function TabLayout() {
         },
       })}
     >
+      <Tabs.Screen
+        name="Profile"
+        options={{
+          title: "Profile",
+        }}
+      />
+
       <Tabs.Screen
         name="Home"
         options={{

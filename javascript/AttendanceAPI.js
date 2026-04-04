@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 export async function validateCode(data) {
   const token = await SecureStore.getItemAsync("accessToken");
   const response = await fetch(
-    "http://192.168.1.141:8000/auth/validate-qr_code",
+    "http://192.168.100.116:8000/auth/validate-qr_code",
     {
       method: "POST",
       headers: {
