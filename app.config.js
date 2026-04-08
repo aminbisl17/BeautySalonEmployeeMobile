@@ -1,0 +1,11 @@
+import "dotenv/config";
+
+export default {
+  expo: {
+    extra: {
+      API_AUTHENTICATION_LOGIN: process.env.API_AUTHENTICATION_LOGIN,
+      API_AUTHENTICATION_VALIDATE: process.env.API_AUTHENTICATION_VALIDATE,
+      API_EMPLOYEE_DATA: process.env.API_EMPLOYEE_DATA
+    },
+  },
+};

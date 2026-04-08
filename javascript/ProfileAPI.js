@@ -1,9 +1,15 @@
+import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { Alert } from "react-native";
 
 export async function getData() {
+  const API_EMPLOYEE_DATA = Constants.expoConfig?.extra?.API_EMPLOYEE_DATA;
+
+  if(!API_EMPLOYEE_DATA){
+    throw new Error("API missing for API_EMPLOYEE_DATA!");
+  }
   const token = await SecureStore.getItemAsync("accessToken");
-  const userRes = await fetch("http://192.168.100.116:8000/api/employee/data", {
+  const userRes = await fetch(API_EMPLOYEE_DATA, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",
   });

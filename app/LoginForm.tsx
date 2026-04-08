@@ -1,7 +1,7 @@
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useState } from "react";
-
 import { getData } from "../javascript/ProfileAPI";
 
 import {
@@ -14,10 +14,17 @@ import {
 } from "react-native";
 
 export default function LoginView() {
+  const API_AUTHENTICATION_LOGIN =
+  Constants.expoConfig?.extra?.API_AUTHENTICATION_LOGIN;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
+
+  if (!API_AUTHENTICATION_LOGIN) {
+  throw new Error("Missing API_AUTHENTICATION_LOGIN");
+}
   /*
+
   useEffect(() => {
     const autoLogin = async () => {
       try {
@@ -53,7 +60,7 @@ export default function LoginView() {
   const handleSubmit = async () => {
     try {
       const response = await fetch(
-        "http://192.168.100.116:8000/auth/login/employee",
+        API_AUTHENTICATION_LOGIN,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
