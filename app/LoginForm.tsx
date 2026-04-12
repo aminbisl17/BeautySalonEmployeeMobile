@@ -15,14 +15,15 @@ import {
 
 export default function LoginView() {
   const API_AUTHENTICATION_LOGIN =
-  Constants.expoConfig?.extra?.API_AUTHENTICATION_LOGIN;
+    Constants.expoConfig?.extra?.API_AUTHENTICATION_LOGIN;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
 
   if (!API_AUTHENTICATION_LOGIN) {
-  throw new Error("Missing API_AUTHENTICATION_LOGIN");
-}
+    throw new Error("Missing API_AUTHENTICATION_LOGIN");
+  }
+
   /*
 
   useEffect(() => {
@@ -59,15 +60,12 @@ export default function LoginView() {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch(
-        API_AUTHENTICATION_LOGIN,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
-          credentials: "include",
-        },
-      );
+      const response = await fetch(API_AUTHENTICATION_LOGIN, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+        credentials: "include",
+      });
 
       if (response.status === 401) {
         Alert.alert("Error", "Invalid login");
