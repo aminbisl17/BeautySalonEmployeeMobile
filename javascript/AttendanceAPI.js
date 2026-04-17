@@ -17,7 +17,7 @@ export async function validateCode(data) {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data), // ✅ FIXED
+      body: JSON.stringify(data), 
     },
   );
 
