@@ -43,6 +43,7 @@ export default function Profile() {
     try {
       await SecureStore.deleteItemAsync("userDetails");
       await SecureStore.deleteItemAsync("accessToken");
+      await SecureStore.deleteItemAsync("refreshToken");
 
       router.replace("/");
     } catch (err) {

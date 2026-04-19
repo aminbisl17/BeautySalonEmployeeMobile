@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { getData } from "../javascript/ProfileAPI";
 
 import {
@@ -16,26 +16,30 @@ import {
 export default function LoginView() {
   const API_AUTHENTICATION_LOGIN =
     Constants.expoConfig?.extra?.API_AUTHENTICATION_LOGIN;
+
+  const API_AUTHENTICATION_REFRESH_TOKEN =
+    Constants.expoConfig?.extra?.API_AUTHENTICATION_REFRESH_TOKEN;
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
 
-  if (!API_AUTHENTICATION_LOGIN) {
-    throw new Error("Missing API_AUTHENTICATION_LOGIN");
+  if (!API_AUTHENTICATION_LOGIN || !API_AUTHENTICATION_REFRESH_TOKEN) {
+    throw new Error("Missing API!");
   }
-
-  /*
 
   useEffect(() => {
     const autoLogin = async () => {
+      const refreshToken = await SecureStore.getItemAsync("refreshToken");
+
       try {
-        const res = await fetch(
-          "http://192.168.1.141:8000/auth/refresh-token",
-          {
-            method: "POST",
-            credentials: "include",
+        const res = await fetch(API_AUTHENTICATION_REFRESH_TOKEN, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        );
+          body: JSON.stringify({ refreshToken }),
+        });
 
         if (!res.ok) {
           setLoading(false);
@@ -56,27 +60,45 @@ export default function LoginView() {
 
     autoLogin();
   }, []);
-  */
 
   const handleSubmit = async () => {
+    const controller = new AbortController();
+
+    const timeout = setTimeout(() => {
+      controller.abort();
+    }, 8000);
+
     try {
       const response = await fetch(API_AUTHENTICATION_LOGIN, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
-        credentials: "include",
+        signal: controller.signal,
       });
 
-      if (response.status === 401) {
-        Alert.alert("Error", "Invalid login");
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        Alert.alert("Error", "Invalid login or server error");
         return;
       }
 
       const data = await response.json();
+
       await SecureStore.setItemAsync("accessToken", data.token);
+      await SecureStore.setItemAsync("refreshToken", data.refreshToken);
+
       await getData();
       router.replace("/Home");
     } catch (err) {
+      clearTimeout(timeout);
+
+      if (err.name === "AbortError") {
+        Alert.alert("Error", "Server is not responding. Try again.");
+      } else {
+        Alert.alert("Error", "Network error");
+      }
+
       console.error(err);
     }
   };
