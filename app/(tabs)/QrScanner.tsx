@@ -1,5 +1,4 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -11,90 +10,82 @@ import {
 } from "react-native";
 
 import * as Haptics from "expo-haptics";
+import { router } from "expo-router";
 import { useRef } from "react";
 import { validateCode } from "../../javascript/AttendanceAPI";
 
 export default function QRScannerScreen() {
-  const lockRef = useRef(false);
-  const [permission, requestPermission] = useCameraPermissions();
-  const [scanning, setScanning] = useState(false);
+ const lockRef = useRef(false);
+
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
-  +useEffect(() => {
+
+  const [permission, requestPermission] = useCameraPermissions();
+
+  useEffect(() => {
     requestPermission();
   }, []);
 
-  const handleScan = async ({ data }) => {
-    if (lockRef.current) return; // HARD STOP DUPLICATES
+  if (!permission?.granted) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>No camera permission</Text>
+        <Button title="Allow" onPress={requestPermission} />
+      </View>
+    );
+  }
+  const handleScan = async ({ data }: any) => {
+    if (lockRef.current) return;
 
     lockRef.current = true;
     setScanned(true);
-    setScanning(false);
     setLoading(true);
     setResult(data);
 
     try {
-      const userDetailsJson = await SecureStore.getItemAsync("userDetails");
-      if (!userDetailsJson) throw new Error("User details not found");
-
-      const user = JSON.parse(userDetailsJson);
       await validateCode({
-        id: user.ID,
-        username: user.username,
         code: data,
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      //  console.log("Backend response:", res);
-    } catch (err) {
-      Alert.alert("Error", err.message || "Something went wrong");
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Something went wrong");
     } finally {
       setLoading(false);
 
       setTimeout(() => {
         setScanned(false);
-        lockRef.current = false; // unlock scanner
-      }, 3000);
+        lockRef.current = false;
+      }, 2500);
     }
   };
-
-  if (!permission) {
-    return <Text>Requesting permission...</Text>;
-  }
-
-  if (!permission.granted) {
-    return <Text>No access to camera</Text>;
-  }
-
   return (
-    <View style={styles.container}>
-      {/* 🔥 LOADING STATE */}
-      {loading && (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" />
-          <Text>Validating QR...</Text>
+    <View style={StyleSheet.absoluteFillObject}>
+      <CameraView
+        style={StyleSheet.absoluteFillObject}
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr"],
+        }}
+        onBarcodeScanned={scanned || loading ? undefined : handleScan}
+      />
+
+      {/* Close button */}
+      <View style={{ position: "absolute", top: 50, left: 20 }}>
+        <Button title="Close" onPress={() => { router.replace("/Home")}} />
+      </View>
+
+      {/* Scan again */}
+      {scanned && !loading && (
+        <View style={{ position: "absolute", bottom: 50, alignSelf: "center" }}>
+          <Button title="Scan Again" onPress={() => setScanned(false)} />
         </View>
       )}
 
-      {!scanning ? (
-        <>
-          <Button title="Scan QR Code" onPress={() => setScanning(true)} />
-          {result ? <Text style={styles.result}>Last QR: {result}</Text> : null}
-        </>
-      ) : (
-        <View style={styles.cameraContainer}>
-          <CameraView
-            style={StyleSheet.absoluteFillObject}
-            barcodeScannerSettings={{
-              barcodeTypes: ["qr"],
-            }}
-            onBarcodeScanned={scanned || loading ? undefined : handleScan}
-          />
-
-          {scanned && !loading && (
-            <Button title="Scan Again" onPress={() => setScanned(false)} />
-          )}
+      {/* Loading */}
+      {loading && (
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color="white" />
         </View>
       )}
     </View>
