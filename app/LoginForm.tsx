@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { getData } from "../javascript/ProfileAPI";
 
 import {
+  ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
@@ -32,6 +33,11 @@ export default function LoginView() {
     const autoLogin = async () => {
       const refreshToken = await SecureStore.getItemAsync("refreshToken");
 
+      if (!refreshToken) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch(API_AUTHENTICATION_REFRESH_TOKEN, {
           method: "POST",
@@ -48,8 +54,9 @@ export default function LoginView() {
 
         const data = await res.json();
         await SecureStore.setItemAsync("accessToken", data.accessToken);
-        ////   await getData();
+           await getData();
 
+         setLoading(false);
         router.replace("/Profile");
         //  Alert.alert("Welcome!", "Hello" + userInfo.emri);
       } catch (err) {
@@ -69,7 +76,7 @@ export default function LoginView() {
     }, 8000);
 
     try {
-      const response = await fetch(API_AUTHENTICATION_LOGIN, {
+      const res = await fetch(API_AUTHENTICATION_LOGIN, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
@@ -78,17 +85,20 @@ export default function LoginView() {
 
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        Alert.alert("Error", "Invalid login or server error");
-        return;
-      }
+      const data = await res.json();
 
-      const data = await response.json();
+     if (!res.ok || !data.token) {
+  setLoading(false);
+  await SecureStore.deleteItemAsync("refreshToken");
+
+  Alert.alert("Login failed", data?.error || "Invalid username or password");
+  return;
+}
 
       await SecureStore.setItemAsync("accessToken", data.token);
       await SecureStore.setItemAsync("refreshToken", data.refreshToken);
-
       await getData();
+
       router.replace("/Home");
     } catch (err) {
       clearTimeout(timeout);
@@ -102,7 +112,7 @@ export default function LoginView() {
       console.error(err);
     }
   };
-  /*
+  
   if (loading) {
     return (
       <View style={styles.container}>
@@ -111,7 +121,7 @@ export default function LoginView() {
       </View>
     );
   }
- */
+ 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>

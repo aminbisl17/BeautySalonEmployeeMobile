@@ -9,6 +9,7 @@ export async function getData() {
     throw new Error("API missing for API_EMPLOYEE_DATA!");
   }
   const token = await SecureStore.getItemAsync("accessToken");
+  
   const userRes = await fetch(API_EMPLOYEE_DATA, {
     headers: { Authorization: `Bearer ${token}` },
     credentials: "include",

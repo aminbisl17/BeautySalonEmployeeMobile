@@ -1,9 +1,11 @@
 import { getData } from "@/javascript/ProfileAPI";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,32 +14,34 @@ import {
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+
+  const loadUser = async (isRefresh = false) => {
+  try {
+    await getData();
+
+    const data = await SecureStore.getItemAsync("userDetails");
+    if (data) setUser(JSON.parse(data));
+
+  } catch (e) {
+    console.log(e);
+  } finally {
+    if (!isRefresh) setLoading(false);
+  }
+};
+
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        await getData();
-
-        const data = await SecureStore.getItemAsync("userDetails");
-        if (data) setUser(JSON.parse(data));
-      } catch (e) {
-        console.log(e);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
+    
+    loadUser();
   }, []);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading profile…</Text>
-      </View>
-    );
-  }
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadUser();
+    setRefreshing(false);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -51,8 +55,23 @@ export default function Profile() {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading profile…</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <>
+     <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.avatar}>
@@ -98,7 +117,8 @@ export default function Profile() {
       >
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
+    </>
   );
 }
 
