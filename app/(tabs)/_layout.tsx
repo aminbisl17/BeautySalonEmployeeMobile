@@ -50,6 +50,12 @@ export default function TabLayout() {
           title: "Scanner",
         }}
       />
+      <Tabs.Screen
+        name="AvailableDates"
+        options={{
+          href: null, // hides it from the tab bar
+        }}
+      />
     </Tabs>
   );
 }

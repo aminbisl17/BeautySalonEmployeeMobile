@@ -2,6 +2,8 @@ import "dotenv/config";
 
 export default {
   expo: {
+    plugins: ["@react-native-community/datetimepicker"],
+
     extra: {
       API_AUTHENTICATION_LOGIN: process.env.API_AUTHENTICATION_LOGIN,
       API_AUTHENTICATION_REFRESH_TOKEN:
