@@ -1,14 +1,16 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
+
+import { setAvailableDates } from "@/javascript/AvailableDates";
 
 const WEEK_DAYS = [
   { id: 1, name: "Monday" },
@@ -20,18 +22,25 @@ const WEEK_DAYS = [
   { id: 7, name: "Sunday" },
 ];
 
+const formatTimeString = (date: Date) => date.toTimeString().slice(0, 5);
+
+const parseTimeString = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d;
+};
+
 export default function Availability() {
   const [expanded, setExpanded] = useState<number | null>(null);
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [endDate, setEndDate] = useState<Date>(
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  ); // Default +7 days
   const [availableDays, setAvailableDays] = useState<number[]>([]);
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
 
   useEffect(() => {
-    if (startDate && endDate) {
-      calculateAvailableDays(startDate, endDate);
-    }
+    calculateAvailableDays(startDate, endDate);
   }, [startDate, endDate]);
 
   const [days, setDays] = useState(
@@ -46,10 +55,8 @@ export default function Availability() {
   );
 
   const calculateAvailableDays = (start: Date, end: Date) => {
-    if (!start || !end) return;
     const found = new Set<number>();
     let current = new Date(start);
-
     while (current <= end) {
       let day = current.getDay();
       day = day === 0 ? 7 : day;
@@ -65,6 +72,29 @@ export default function Availability() {
     );
   };
 
+  const setDates = async () => {
+    const data = {
+      start_date: startDate.toISOString().split("T")[0],
+      end_date: endDate.toISOString().split("T")[0],
+      availabilityDetails: days
+        .filter((day) => day.enabled)
+        .map((day) => ({
+          day_of_week: day.id,
+          start_time: day.start_time,
+          end_time: day.end_time,
+          pause_start: day.pause_start,
+          pause_end: day.pause_end,
+        })),
+    };
+
+    try {
+      const message = await setAvailableDates(data);
+      Alert.alert("Success", message);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -75,26 +105,29 @@ export default function Availability() {
       {/* DATE RANGE */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Date Range</Text>
-        <View style={styles.row}>
-          <Pressable
-            style={styles.dateCard}
-            onPress={() => setShowStartPicker(true)}
-          >
-            <Text style={styles.label}>Start Date</Text>
-            <Text style={styles.value}>
-              {startDate ? startDate.toISOString().split("T")[0] : "Pick date"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.dateCard}
-            onPress={() => setShowEndPicker(true)}
-          >
-            <Text style={styles.label}>End Date</Text>
-            <Text style={styles.value}>
-              {endDate ? endDate.toISOString().split("T")[0] : "Pick date"}
-            </Text>
-          </Pressable>
+        <View style={styles.cardGroup}>
+          <View style={styles.cellRow}>
+            <Text style={styles.cellLabel}>Start Date</Text>
+            <DateTimePicker
+              value={startDate}
+              mode="date"
+              display="compact"
+              style={styles.compactPicker}
+              onChange={(e, date) => date && setStartDate(date)}
+            />
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.cellRow}>
+            <Text style={styles.cellLabel}>End Date</Text>
+            <DateTimePicker
+              value={endDate}
+              mode="date"
+              display="compact"
+              minimumDate={startDate}
+              style={styles.compactPicker}
+              onChange={(e, date) => date && setEndDate(date)}
+            />
+          </View>
         </View>
       </View>
 
@@ -106,125 +139,136 @@ export default function Availability() {
           .map((day) => {
             const isExpanded = expanded === day.id;
             return (
-              <View
-                key={day.id}
-                style={[styles.dayCard, day.enabled && styles.dayCardActive]}
-              >
-                <Pressable
-                  style={styles.dayHeader}
-                  onPress={() => setExpanded(isExpanded ? null : day.id)}
-                >
-                  <View style={styles.headerLeft}>
-                    <Text
-                      style={[
-                        styles.dayName,
-                        day.enabled && styles.dayNameActive,
-                      ]}
-                    >
-                      {day.name}
-                    </Text>
-                    <Text style={styles.statusSubtitle}>
-                      {day.enabled
-                        ? `${day.start_time} - ${day.end_time}`
-                        : "Closed"}
-                    </Text>
-                  </View>
-
-                  <View style={styles.headerRight}>
-                    <Switch
-                      trackColor={{ false: "#E2E8F0", true: "#93C5FD" }}
-                      thumbColor={day.enabled ? "#2563EB" : "#F1F5F9"}
-                      value={day.enabled}
-                      onValueChange={(v) => updateDay(day.id, "enabled", v)}
-                    />
-                    <Text style={styles.arrow}>{isExpanded ? "▲" : "▼"}</Text>
-                  </View>
-                </Pressable>
-
-                {isExpanded && day.enabled && (
-                  <View style={styles.dayContent}>
-                    <Text style={styles.groupLabel}>Working Hours</Text>
-                    <View style={styles.row}>
-                      <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>From</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={day.start_time}
-                          onChangeText={(v) =>
-                            updateDay(day.id, "start_time", v)
-                          }
-                        />
-                      </View>
-                      <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>To</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={day.end_time}
-                          onChangeText={(v) => updateDay(day.id, "end_time", v)}
-                        />
-                      </View>
+              <View key={day.id} style={styles.cardGroupOuter}>
+                <View style={styles.cardGroup}>
+                  <Pressable
+                    style={styles.cellRow}
+                    onPress={() => setExpanded(isExpanded ? null : day.id)}
+                  >
+                    <View style={styles.headerLeft}>
+                      <Text
+                        style={[
+                          styles.dayName,
+                          day.enabled && styles.dayNameActive,
+                        ]}
+                      >
+                        {day.name}
+                      </Text>
+                      <Text style={styles.statusSubtitle}>
+                        {day.enabled
+                          ? `${day.start_time} - ${day.end_time}`
+                          : "Closed"}
+                      </Text>
                     </View>
 
-                    <Text style={[styles.groupLabel, { marginTop: 12 }]}>
-                      Break Duration
-                    </Text>
-                    <View style={styles.row}>
-                      <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>Start</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={day.pause_start}
-                          onChangeText={(v) =>
-                            updateDay(day.id, "pause_start", v)
-                          }
-                        />
+                    <View style={styles.headerRight}>
+                      <Switch
+                        trackColor={{ false: "#E9E9EA", true: "#34C759" }}
+                        thumbColor="#FFFFFF"
+                        value={day.enabled}
+                        onValueChange={(v) => updateDay(day.id, "enabled", v)}
+                      />
+                      <Text
+                        style={[
+                          styles.chevron,
+                          isExpanded && styles.chevronExpanded,
+                        ]}
+                      >
+                        ›
+                      </Text>
+                    </View>
+                  </Pressable>
+
+                  {isExpanded && day.enabled && (
+                    <View style={styles.dayContent}>
+                      <Text style={styles.groupLabel}>Working Hours</Text>
+                      <View style={styles.timeRow}>
+                        <View style={styles.timeCell}>
+                          <Text style={styles.timeLabel}>Starts</Text>
+                          <DateTimePicker
+                            value={parseTimeString(day.start_time)}
+                            mode="time"
+                            display="compact"
+                            is24Hour={true}
+                            onChange={(e, date) =>
+                              date &&
+                              updateDay(
+                                day.id,
+                                "start_time",
+                                formatTimeString(date),
+                              )
+                            }
+                          />
+                        </View>
+                        <View style={styles.timeCell}>
+                          <Text style={styles.timeLabel}>Ends</Text>
+                          <DateTimePicker
+                            value={parseTimeString(day.end_time)}
+                            mode="time"
+                            display="compact"
+                            is24Hour={true}
+                            onChange={(e, date) =>
+                              date &&
+                              updateDay(
+                                day.id,
+                                "end_time",
+                                formatTimeString(date),
+                              )
+                            }
+                          />
+                        </View>
                       </View>
-                      <View style={styles.inputWrapper}>
-                        <Text style={styles.inputLabel}>End</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={day.pause_end}
-                          onChangeText={(v) =>
-                            updateDay(day.id, "pause_end", v)
-                          }
-                        />
+
+                      <Text style={[styles.groupLabel, { marginTop: 16 }]}>
+                        Break Duration
+                      </Text>
+                      <View style={styles.timeRow}>
+                        <View style={styles.timeCell}>
+                          <Text style={styles.timeLabel}>From</Text>
+                          <DateTimePicker
+                            value={parseTimeString(day.pause_start)}
+                            mode="time"
+                            display="compact"
+                            is24Hour={true}
+                            onChange={(e, date) =>
+                              date &&
+                              updateDay(
+                                day.id,
+                                "pause_start",
+                                formatTimeString(date),
+                              )
+                            }
+                          />
+                        </View>
+                        <View style={styles.timeCell}>
+                          <Text style={styles.timeLabel}>To</Text>
+                          <DateTimePicker
+                            value={parseTimeString(day.pause_end)}
+                            mode="time"
+                            display="compact"
+                            is24Hour={true}
+                            onChange={(e, date) =>
+                              date &&
+                              updateDay(
+                                day.id,
+                                "pause_end",
+                                formatTimeString(date),
+                              )
+                            }
+                          />
+                        </View>
                       </View>
                     </View>
-                  </View>
-                )}
+                  )}
+                </View>
               </View>
             );
           })}
       </View>
 
-      <Pressable style={styles.button}>
+      <Pressable style={styles.button} onPress={setDates}>
         <Text style={styles.buttonText}>Save Availability</Text>
       </Pressable>
-
-      {showStartPicker && (
-        <DateTimePicker
-          value={startDate || new Date()}
-          mode="date"
-          display="default"
-          onChange={(event, selectedDate) => {
-            setShowStartPicker(false);
-            if (selectedDate) setStartDate(selectedDate);
-          }}
-        />
-      )}
-
-      {showEndPicker && (
-        <DateTimePicker
-          value={endDate || new Date()}
-          mode="date"
-          display="default"
-          minimumDate={startDate || undefined}
-          onChange={(event, selectedDate) => {
-            setShowEndPicker(false);
-            if (selectedDate) setEndDate(selectedDate);
-          }}
-        />
-      )}
     </ScrollView>
   );
 }
@@ -232,142 +276,138 @@ export default function Availability() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#F2F2F7",
   },
   contentContainer: {
     paddingBottom: 40,
+    paddingTop: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 16,
+    fontSize: 34,
+    fontWeight: "700",
+    color: "#000000",
+    letterSpacing: -0.5,
+    marginHorizontal: 16,
+    marginBottom: 20,
   },
   section: {
-    marginHorizontal: 20,
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#475569",
-    marginBottom: 12,
+    fontSize: 13,
+    fontWeight: "400",
+    color: "#6C6C70",
+    marginBottom: 8,
+    marginHorizontal: 28,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  row: {
-    flexDirection: "row",
-    gap: 12,
+  cardGroupOuter: {
+    marginBottom: 10,
   },
-  dateCard: {
-    flex: 1,
+  cardGroup: {
     backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  label: {
-    color: "#64748B",
-    fontSize: 12,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#0F172A",
-  },
-  dayCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    marginHorizontal: 16,
     overflow: "hidden",
   },
-  dayCardActive: {
-    borderColor: "#BFDBFE",
-  },
-  dayHeader: {
+  cellRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 48,
+    backgroundColor: "#FFFFFF",
+  },
+  cellLabel: {
+    fontSize: 17,
+    color: "#000000",
+  },
+  compactPicker: {
+    marginRight: -8, // Tucks the native pill nicely against the right side
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#C6C6C8",
+    marginLeft: 16,
   },
   headerLeft: {
     flex: 1,
   },
   dayName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#64748B",
+    fontSize: 17,
+    fontWeight: "500",
+    color: "#8E8E93",
   },
   dayNameActive: {
-    color: "#0F172A",
+    color: "#000000",
+    fontWeight: "600",
   },
   statusSubtitle: {
     fontSize: 13,
-    color: "#94A3B8",
+    color: "#8E8E93",
     marginTop: 2,
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
-  arrow: {
-    fontSize: 12,
-    color: "#94A3B8",
-    width: 16,
-    textAlign: "center",
+  chevron: {
+    fontSize: 20,
+    color: "#C4C4C6",
+    fontWeight: "300",
+    transform: [{ rotate: "90deg" }],
+  },
+  chevronExpanded: {
+    transform: [{ rotate: "-90deg" }],
   },
   dayContent: {
     padding: 16,
-    paddingTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#FAFAFC",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E5E5EA",
   },
   groupLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
-    color: "#475569",
+    color: "#6C6C70",
+    textTransform: "uppercase",
+    letterSpacing: 0.2,
     marginBottom: 8,
   },
-  inputWrapper: {
+  timeRow: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  timeCell: {
     flex: 1,
-  },
-  inputLabel: {
-    fontSize: 11,
-    color: "#64748B",
-    marginBottom: 4,
-    paddingLeft: 2,
-  },
-  input: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderRadius: 8,
-    paddingVertical: 8,
     paddingHorizontal: 12,
-    fontSize: 14,
-    color: "#334155",
-    fontWeight: "500",
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#E5E5EA",
+  },
+  timeLabel: {
+    fontSize: 15,
+    color: "#8E8E93",
   },
   button: {
-    backgroundColor: "#2563EB",
-    marginHorizontal: 20,
-    padding: 16,
-    borderRadius: 14,
+    backgroundColor: "#007AFF",
+    marginHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 12,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "600",
   },
 });
