@@ -10,7 +10,10 @@ import {
   View,
 } from "react-native";
 
-import { setAvailableDates } from "@/javascript/AvailableDates";
+import {
+  getAvailability,
+  setAvailableDates,
+} from "@/javascript/AvailableDates";
 
 const WEEK_DAYS = [
   { id: 1, name: "Monday" },
@@ -30,8 +33,18 @@ const parseTimeString = (timeStr: string) => {
   d.setHours(hours, minutes, 0, 0);
   return d;
 };
-
+const DAY_NAMES = {
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
+  7: "Sunday",
+};
 export default function Availability() {
+  const [availability, setAvailability] = useState([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(
@@ -42,6 +55,21 @@ export default function Availability() {
   useEffect(() => {
     calculateAvailableDays(startDate, endDate);
   }, [startDate, endDate]);
+
+  useEffect(() => {
+    loadAvailability();
+  }, []);
+
+  const loadAvailability = async () => {
+    try {
+      const data = await getAvailability(); // your axios function
+      setAvailability(data);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
 
   const [days, setDays] = useState(
     WEEK_DAYS.map((day) => ({
@@ -90,6 +118,7 @@ export default function Availability() {
     try {
       const message = await setAvailableDates(data);
       Alert.alert("Success", message);
+      await loadAvailability();
     } catch (error) {
       console.log(error);
     }
@@ -101,7 +130,52 @@ export default function Availability() {
       contentContainerStyle={styles.contentContainer}
     >
       <Text style={styles.title}>Availability</Text>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Current Availability</Text>
 
+        {loadingAvailability ? (
+          <Text style={styles.loading}>Loading...</Text>
+        ) : (
+          availability.map((item) => (
+            <View key={item.id_availability} style={styles.cardGroupOuter}>
+              <View style={styles.cardGroup}>
+                <View style={styles.cellRow}>
+                  <Text style={styles.cellLabel}>
+                    {item.start_date} → {item.end_date}
+                  </Text>
+                </View>
+
+                {item.availabilityDetails.map((d, index) => (
+                  <View key={index}>
+                    <View style={styles.separator} />
+                    <View style={styles.cellRow}>
+                      <View>
+                        <Text style={styles.dayNameActive}>
+                          {DAY_NAMES[d.day_of_week]}
+                        </Text>
+
+                        <Text style={styles.statusSubtitle}>
+                          {d.start_time.slice(0, 5)}
+                          {" - "}
+                          {d.end_time.slice(0, 5)}
+                        </Text>
+
+                        {d.pause_start && (
+                          <Text style={styles.statusSubtitle}>
+                            Break {d.pause_start.slice(0, 5)}
+                            {" - "}
+                            {d.pause_end.slice(0, 5)}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))
+        )}
+      </View>
       {/* DATE RANGE */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Date Range</Text>

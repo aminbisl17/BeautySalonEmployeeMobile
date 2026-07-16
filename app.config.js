@@ -12,6 +12,8 @@ export default {
       API_EMPLOYEE_DATA: process.env.API_EMPLOYEE_DATA,
       API_EMPLOYEE_SET_AVAILABLE_DATES:
         process.env.API_EMPLOYEE_SET_AVAILABLE_DATES,
+      API_EMPLOYEE_GET_AVAILABLE_DATES:
+        process.env.API_EMPLOYEE_GET_AVAILABLE_DATES,
     },
   },
 };

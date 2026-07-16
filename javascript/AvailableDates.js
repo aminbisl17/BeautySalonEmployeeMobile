@@ -1,3 +1,4 @@
+import axios from "axios";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { Alert } from "react-native";
@@ -12,20 +13,48 @@ export async function setAvailableDates(data) {
 
   const token = await SecureStore.getItemAsync("accessToken");
 
-  const response = await fetch(API_EMPLOYEE_SET_AVAILABLE_DATES, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  });
+  try {
+    const response = await axios.post(API_EMPLOYEE_SET_AVAILABLE_DATES, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    Alert.alert("Error", errorText || "Something went wrong.");
-    throw new Error(errorText);
+    return response.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+
+    Alert.alert("Error", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+export async function getAvailability() {
+  const API_EMPLOYEE_GET_AVAILABLE_DATES =
+    Constants.expoConfig?.extra?.API_EMPLOYEE_GET_AVAILABLE_DATES;
+
+  if (!API_EMPLOYEE_GET_AVAILABLE_DATES) {
+    throw new Error("Missing API_EMPLOYEE_GET_AVAILABLE_DATES");
   }
 
-  return await response.text();
+  const token = await SecureStore.getItemAsync("accessToken");
+
+  try {
+    const response = await axios.get(API_EMPLOYEE_GET_AVAILABLE_DATES, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+
+    Alert.alert("Error", errorMessage);
+    throw new Error(errorMessage);
+  }
 }
