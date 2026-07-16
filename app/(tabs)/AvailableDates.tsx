@@ -33,6 +33,7 @@ const parseTimeString = (timeStr: string) => {
   d.setHours(hours, minutes, 0, 0);
   return d;
 };
+
 const DAY_NAMES = {
   1: "Monday",
   2: "Tuesday",
@@ -42,10 +43,18 @@ const DAY_NAMES = {
   6: "Saturday",
   7: "Sunday",
 };
+
 export default function Availability() {
   const [availability, setAvailability] = useState([]);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [expandedSavedCard, setExpandedSavedCard] = useState<number | null>(
+    null,
+  );
+
+  // New state to toggle the main setup form visibility
+  const [showSetupForm, setShowSetupForm] = useState(false);
+
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -62,7 +71,7 @@ export default function Availability() {
 
   const loadAvailability = async () => {
     try {
-      const data = await getAvailability(); // your axios function
+      const data = await getAvailability();
       setAvailability(data);
     } catch (e) {
       console.log(e);
@@ -118,6 +127,7 @@ export default function Availability() {
     try {
       const message = await setAvailableDates(data);
       Alert.alert("Success", message);
+      setShowSetupForm(false); // Collapse form upon success
       await loadAvailability();
     } catch (error) {
       console.log(error);
@@ -128,221 +138,280 @@ export default function Availability() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
     >
       <Text style={styles.title}>Availability</Text>
+
+      {/* CURRENT AVAILABILITY */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Current Availability</Text>
 
         {loadingAvailability ? (
-          <Text style={styles.loading}>Loading...</Text>
+          <Text style={styles.loading}>Loading configurations...</Text>
         ) : (
-          availability.map((item) => (
-            <View key={item.id_availability} style={styles.cardGroupOuter}>
-              <View style={styles.cardGroup}>
-                <View style={styles.cellRow}>
-                  <Text style={styles.cellLabel}>
-                    {item.start_date} → {item.end_date}
-                  </Text>
-                </View>
-
-                {item.availabilityDetails.map((d, index) => (
-                  <View key={index}>
-                    <View style={styles.separator} />
-                    <View style={styles.cellRow}>
-                      <View>
-                        <Text style={styles.dayNameActive}>
-                          {DAY_NAMES[d.day_of_week]}
-                        </Text>
-
-                        <Text style={styles.statusSubtitle}>
-                          {d.start_time.slice(0, 5)}
-                          {" - "}
-                          {d.end_time.slice(0, 5)}
-                        </Text>
-
-                        {d.pause_start && (
-                          <Text style={styles.statusSubtitle}>
-                            Break {d.pause_start.slice(0, 5)}
-                            {" - "}
-                            {d.pause_end.slice(0, 5)}
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))
-        )}
-      </View>
-      {/* DATE RANGE */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Date Range</Text>
-        <View style={styles.cardGroup}>
-          <View style={styles.cellRow}>
-            <Text style={styles.cellLabel}>Start Date</Text>
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display="compact"
-              style={styles.compactPicker}
-              onChange={(e, date) => date && setStartDate(date)}
-            />
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.cellRow}>
-            <Text style={styles.cellLabel}>End Date</Text>
-            <DateTimePicker
-              value={endDate}
-              mode="date"
-              display="compact"
-              minimumDate={startDate}
-              style={styles.compactPicker}
-              onChange={(e, date) => date && setEndDate(date)}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* WORKING DAYS */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Working Days</Text>
-        {days
-          .filter((day) => availableDays.includes(day.id))
-          .map((day) => {
-            const isExpanded = expanded === day.id;
+          availability.map((item) => {
+            const isSavedCardExpanded =
+              expandedSavedCard === item.id_availability;
             return (
-              <View key={day.id} style={styles.cardGroupOuter}>
-                <View style={styles.cardGroup}>
+              <View key={item.id_availability} style={styles.cardGroupOuter}>
+                <View style={styles.currentCard}>
                   <Pressable
-                    style={styles.cellRow}
-                    onPress={() => setExpanded(isExpanded ? null : day.id)}
+                    style={styles.currentHeaderRow}
+                    onPress={() =>
+                      setExpandedSavedCard(
+                        isSavedCardExpanded ? null : item.id_availability,
+                      )
+                    }
                   >
-                    <View style={styles.headerLeft}>
-                      <Text
-                        style={[
-                          styles.dayName,
-                          day.enabled && styles.dayNameActive,
-                        ]}
-                      >
-                        {day.name}
-                      </Text>
-                      <Text style={styles.statusSubtitle}>
-                        {day.enabled
-                          ? `${day.start_time} - ${day.end_time}`
-                          : "Closed"}
-                      </Text>
-                    </View>
-
-                    <View style={styles.headerRight}>
-                      <Switch
-                        trackColor={{ false: "#E9E9EA", true: "#34C759" }}
-                        thumbColor="#FFFFFF"
-                        value={day.enabled}
-                        onValueChange={(v) => updateDay(day.id, "enabled", v)}
-                      />
-                      <Text
-                        style={[
-                          styles.chevron,
-                          isExpanded && styles.chevronExpanded,
-                        ]}
-                      >
-                        ›
-                      </Text>
-                    </View>
+                    <Text style={styles.currentDateRange}>
+                      {item.start_date} → {item.end_date}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.chevron,
+                        isSavedCardExpanded && styles.chevronExpanded,
+                      ]}
+                    >
+                      ›
+                    </Text>
                   </Pressable>
 
-                  {isExpanded && day.enabled && (
-                    <View style={styles.dayContent}>
-                      <Text style={styles.groupLabel}>Working Hours</Text>
-                      <View style={styles.timeRow}>
-                        <View style={styles.timeCell}>
-                          <Text style={styles.timeLabel}>Starts</Text>
-                          <DateTimePicker
-                            value={parseTimeString(day.start_time)}
-                            mode="time"
-                            display="compact"
-                            is24Hour={true}
-                            onChange={(e, date) =>
-                              date &&
-                              updateDay(
-                                day.id,
-                                "start_time",
-                                formatTimeString(date),
-                              )
-                            }
-                          />
-                        </View>
-                        <View style={styles.timeCell}>
-                          <Text style={styles.timeLabel}>Ends</Text>
-                          <DateTimePicker
-                            value={parseTimeString(day.end_time)}
-                            mode="time"
-                            display="compact"
-                            is24Hour={true}
-                            onChange={(e, date) =>
-                              date &&
-                              updateDay(
-                                day.id,
-                                "end_time",
-                                formatTimeString(date),
-                              )
-                            }
-                          />
+                  {isSavedCardExpanded &&
+                    item.availabilityDetails.map((d, index) => (
+                      <View key={index} style={styles.currentDetailItem}>
+                        <View style={styles.detailBadge} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.dayNameActive}>
+                            {DAY_NAMES[d.day_of_week]}
+                          </Text>
+                          <Text style={styles.statusSubtitle}>
+                            {d.start_time.slice(0, 5)} -{" "}
+                            {d.end_time.slice(0, 5)}
+                          </Text>
+                          {d.pause_start && (
+                            <Text style={styles.breakText}>
+                              Break: {d.pause_start.slice(0, 5)} -{" "}
+                              {d.pause_end.slice(0, 5)}
+                            </Text>
+                          )}
                         </View>
                       </View>
+                    ))}
 
-                      <Text style={[styles.groupLabel, { marginTop: 16 }]}>
-                        Break Duration
-                      </Text>
-                      <View style={styles.timeRow}>
-                        <View style={styles.timeCell}>
-                          <Text style={styles.timeLabel}>From</Text>
-                          <DateTimePicker
-                            value={parseTimeString(day.pause_start)}
-                            mode="time"
-                            display="compact"
-                            is24Hour={true}
-                            onChange={(e, date) =>
-                              date &&
-                              updateDay(
-                                day.id,
-                                "pause_start",
-                                formatTimeString(date),
-                              )
-                            }
-                          />
-                        </View>
-                        <View style={styles.timeCell}>
-                          <Text style={styles.timeLabel}>To</Text>
-                          <DateTimePicker
-                            value={parseTimeString(day.pause_end)}
-                            mode="time"
-                            display="compact"
-                            is24Hour={true}
-                            onChange={(e, date) =>
-                              date &&
-                              updateDay(
-                                day.id,
-                                "pause_end",
-                                formatTimeString(date),
-                              )
-                            }
-                          />
-                        </View>
-                      </View>
-                    </View>
+                  {!isSavedCardExpanded && (
+                    <Text style={styles.tapToViewText}>
+                      Tap to view scheduled days
+                    </Text>
                   )}
                 </View>
               </View>
             );
-          })}
+          })
+        )}
       </View>
 
-      <Pressable style={styles.button} onPress={setDates}>
-        <Text style={styles.buttonText}>Save Availability</Text>
-      </Pressable>
+      {/* EXPANDABLE TRIGGER FOR CONFIGURATION FORM */}
+      <View style={styles.section}>
+        <Pressable
+          style={[
+            styles.setupToggleFormButton,
+            showSetupForm && styles.setupToggleFormButtonActive,
+          ]}
+          onPress={() => setShowSetupForm(!showSetupForm)}
+        >
+          <View>
+            <Text style={styles.setupToggleTitle}>Set New Availability</Text>
+            <Text style={styles.setupToggleSubtitle}>
+              Define your dates, active days, and times
+            </Text>
+          </View>
+          <Text
+            style={[
+              styles.mainChevron,
+              showSetupForm && styles.chevronExpanded,
+            ]}
+          >
+            ›
+          </Text>
+        </Pressable>
+
+        {showSetupForm && (
+          <View style={styles.formContainer}>
+            {/* DATE RANGE */}
+            <Text style={styles.innerSectionTitle}>Select Date Range</Text>
+            <View style={styles.cardGroup}>
+              <View style={styles.cellRow}>
+                <Text style={styles.cellLabel}>Start Date</Text>
+                <DateTimePicker
+                  value={startDate}
+                  mode="date"
+                  display="compact"
+                  style={styles.compactPicker}
+                  onChange={(e, date) => date && setStartDate(date)}
+                />
+              </View>
+              <View style={styles.separator} />
+              <View style={styles.cellRow}>
+                <Text style={styles.cellLabel}>End Date</Text>
+                <DateTimePicker
+                  value={endDate}
+                  mode="date"
+                  display="compact"
+                  minimumDate={startDate}
+                  style={styles.compactPicker}
+                  onChange={(e, date) => date && setEndDate(date)}
+                />
+              </View>
+            </View>
+
+            {/* WORKING DAYS */}
+            <Text style={[styles.innerSectionTitle, { marginTop: 20 }]}>
+              Working Days Setup
+            </Text>
+            {days
+              .filter((day) => availableDays.includes(day.id))
+              .map((day) => {
+                const isExpanded = expanded === day.id;
+                return (
+                  <View key={day.id} style={styles.cardGroupOuter}>
+                    <View
+                      style={[
+                        styles.cardGroup,
+                        day.enabled && styles.cardActiveBorder,
+                      ]}
+                    >
+                      <Pressable
+                        style={styles.cellRow}
+                        onPress={() => setExpanded(isExpanded ? null : day.id)}
+                      >
+                        <View style={styles.headerLeft}>
+                          <Text
+                            style={[
+                              styles.dayName,
+                              day.enabled && styles.dayNameActive,
+                            ]}
+                          >
+                            {day.name}
+                          </Text>
+                          <Text style={styles.statusSubtitle}>
+                            {day.enabled
+                              ? `${day.start_time} - ${day.end_time}`
+                              : "Closed / Unavailable"}
+                          </Text>
+                        </View>
+
+                        <View style={styles.headerRight}>
+                          <Switch
+                            trackColor={{ false: "#E5E5EA", true: "#6366F1" }}
+                            thumbColor="#FFFFFF"
+                            value={day.enabled}
+                            onValueChange={(v) =>
+                              updateDay(day.id, "enabled", v)
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.chevron,
+                              isExpanded && styles.chevronExpanded,
+                            ]}
+                          >
+                            ›
+                          </Text>
+                        </View>
+                      </Pressable>
+
+                      {isExpanded && day.enabled && (
+                        <View style={styles.dayContent}>
+                          <Text style={styles.groupLabel}>Working Hours</Text>
+                          <View style={styles.timeRow}>
+                            <View style={styles.timeCell}>
+                              <Text style={styles.timeLabel}>Starts</Text>
+                              <DateTimePicker
+                                value={parseTimeString(day.start_time)}
+                                mode="time"
+                                display="compact"
+                                is24Hour={true}
+                                onChange={(e, date) =>
+                                  date &&
+                                  updateDay(
+                                    day.id,
+                                    "start_time",
+                                    formatTimeString(date),
+                                  )
+                                }
+                              />
+                            </View>
+                            <View style={styles.timeCell}>
+                              <Text style={styles.timeLabel}>Ends</Text>
+                              <DateTimePicker
+                                value={parseTimeString(day.end_time)}
+                                mode="time"
+                                display="compact"
+                                is24Hour={true}
+                                onChange={(e, date) =>
+                                  date &&
+                                  updateDay(
+                                    day.id,
+                                    "end_time",
+                                    formatTimeString(date),
+                                  )
+                                }
+                              />
+                            </View>
+                          </View>
+
+                          <Text style={[styles.groupLabel, { marginTop: 18 }]}>
+                            Break Duration
+                          </Text>
+                          <View style={styles.timeRow}>
+                            <View style={styles.timeCell}>
+                              <Text style={styles.timeLabel}>From</Text>
+                              <DateTimePicker
+                                value={parseTimeString(day.pause_start)}
+                                mode="time"
+                                display="compact"
+                                is24Hour={true}
+                                onChange={(e, date) =>
+                                  date &&
+                                  updateDay(
+                                    day.id,
+                                    "pause_start",
+                                    formatTimeString(date),
+                                  )
+                                }
+                              />
+                            </View>
+                            <View style={styles.timeCell}>
+                              <Text style={styles.timeLabel}>To</Text>
+                              <DateTimePicker
+                                value={parseTimeString(day.pause_end)}
+                                mode="time"
+                                display="compact"
+                                is24Hour={true}
+                                onChange={(e, date) =>
+                                  date &&
+                                  updateDay(
+                                    day.id,
+                                    "pause_end",
+                                    formatTimeString(date),
+                                  )
+                                }
+                              />
+                            </View>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                );
+              })}
+
+            <Pressable style={styles.button} onPress={setDates}>
+              <Text style={styles.buttonText}>Save Availability</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -350,87 +419,201 @@ export default function Availability() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#F8FAFC",
   },
   contentContainer: {
-    paddingBottom: 40,
-    paddingTop: 16,
+    paddingBottom: 48,
+    paddingTop: 24,
   },
   title: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "700",
-    color: "#000000",
-    letterSpacing: -0.5,
-    marginHorizontal: 16,
-    marginBottom: 20,
-  },
-  section: {
+    color: "#0F172A",
+    letterSpacing: -0.6,
+    marginHorizontal: 20,
     marginBottom: 24,
   },
+  section: {
+    marginBottom: 20,
+  },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: "400",
-    color: "#6C6C70",
-    marginBottom: 8,
-    marginHorizontal: 28,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 12,
+    marginHorizontal: 24,
     textTransform: "uppercase",
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
+  },
+  innerSectionTitle: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 8,
+    marginLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  setupToggleFormButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  setupToggleFormButtonActive: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: "#FAFAFC",
+    borderBottomWidth: 0,
+  },
+  setupToggleTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#4F46E5",
+  },
+  setupToggleSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  formContainer: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 20,
+    padding: 16,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "#E2E8F0",
+    paddingTop: 12,
   },
   cardGroupOuter: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   cardGroup: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
-    marginHorizontal: 16,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cardActiveBorder: {
+    borderColor: "#CBD5E1",
+  },
+  currentCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    marginHorizontal: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  currentHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingBottom: 4,
+  },
+  currentDateRange: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1E293B",
+  },
+  currentDetailItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  detailBadge: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#6366F1",
+    marginTop: 8,
+    marginRight: 10,
   },
   cellRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    minHeight: 48,
-    backgroundColor: "#FFFFFF",
+    minHeight: 52,
   },
   cellLabel: {
-    fontSize: 17,
-    color: "#000000",
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#1E293B",
   },
   compactPicker: {
-    marginRight: -8, // Tucks the native pill nicely against the right side
+    marginRight: -4,
   },
   separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "#C6C6C8",
+    height: 1,
+    backgroundColor: "#F1F5F9",
     marginLeft: 16,
   },
   headerLeft: {
     flex: 1,
   },
   dayName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "500",
-    color: "#8E8E93",
+    color: "#94A3B8",
   },
   dayNameActive: {
-    color: "#000000",
+    color: "#0F172A",
     fontWeight: "600",
   },
   statusSubtitle: {
     fontSize: 13,
-    color: "#8E8E93",
+    color: "#64748B",
     marginTop: 2,
+  },
+  breakText: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 2,
+  },
+  tapToViewText: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 4,
+    fontStyle: "italic",
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   chevron: {
-    fontSize: 20,
-    color: "#C4C4C6",
+    fontSize: 22,
+    color: "#94A3B8",
+    fontWeight: "300",
+    transform: [{ rotate: "90deg" }],
+  },
+  mainChevron: {
+    fontSize: 26,
+    color: "#4F46E5",
     fontWeight: "300",
     transform: [{ rotate: "90deg" }],
   },
@@ -439,21 +622,21 @@ const styles = StyleSheet.create({
   },
   dayContent: {
     padding: 16,
-    backgroundColor: "#FAFAFC",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#E5E5EA",
+    backgroundColor: "#F8FAFC",
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
   },
   groupLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#6C6C70",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748B",
     textTransform: "uppercase",
-    letterSpacing: 0.2,
+    letterSpacing: 0.5,
     marginBottom: 8,
   },
   timeRow: {
     flexDirection: "row",
-    gap: 16,
+    gap: 12,
   },
   timeCell: {
     flex: 1,
@@ -462,26 +645,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#E5E5EA",
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   timeLabel: {
-    fontSize: 15,
-    color: "#8E8E93",
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#64748B",
   },
   button: {
-    backgroundColor: "#007AFF",
-    marginHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: "#6366F1",
+    paddingVertical: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 12,
+    marginTop: 24,
+    shadowColor: "#6366F1",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "600",
+  },
+  loading: {
+    fontSize: 14,
+    color: "#64748B",
+    marginHorizontal: 24,
+    fontStyle: "italic",
   },
 });
