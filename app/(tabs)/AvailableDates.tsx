@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -17,6 +17,33 @@ import {
 } from "@/javascript/AvailableDates";
 import { Ionicons } from "@expo/vector-icons";
 
+// --- Types & Interfaces ---
+interface AvailabilityDetail {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  pause_start?: string;
+  pause_end?: string;
+}
+
+interface AvailabilityItem {
+  id_availability: number;
+  start_date: string;
+  end_date: string;
+  availabilityDetails: AvailabilityDetail[];
+}
+
+interface DaySetup {
+  id: number;
+  name: string;
+  enabled: boolean;
+  start_time: string;
+  end_time: string;
+  pause_start: string;
+  pause_end: string;
+}
+
+// --- Constants & Static Helpers ---
 const WEEK_DAYS = [
   { id: 1, name: "Monday" },
   { id: 2, name: "Tuesday" },
@@ -27,16 +54,7 @@ const WEEK_DAYS = [
   { id: 7, name: "Sunday" },
 ];
 
-const formatTimeString = (date: Date) => date.toTimeString().slice(0, 5);
-
-const parseTimeString = (timeStr: string) => {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  const d = new Date();
-  d.setHours(hours, minutes, 0, 0);
-  return d;
-};
-
-const DAY_NAMES = {
+const DAY_NAMES: Record<number, string> = {
   1: "Monday",
   2: "Tuesday",
   3: "Wednesday",
@@ -46,45 +64,70 @@ const DAY_NAMES = {
   7: "Sunday",
 };
 
+const formatTimeString = (date: Date) => date.toTimeString().slice(0, 5);
+
+const parseTimeString = (timeStr: string) => {
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  const d = new Date();
+  d.setHours(hours, minutes, 0, 0);
+  return d;
+};
+
+const formatDateString = (date: Date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+const parseDateOnlyString = (dateStr: string) => {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  return new Date(year, month - 1, day, 0, 0, 0, 0);
+};
+
+const isDateOccupied = (
+  date: Date,
+  availabilityList: AvailabilityItem[],
+  currentIdToIgnore?: number,
+) => {
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+
+  return availabilityList.some((item) => {
+    if (currentIdToIgnore && item.id_availability === currentIdToIgnore)
+      return false;
+
+    const start = parseDateOnlyString(item.start_date);
+    const end = parseDateOnlyString(item.end_date);
+    return checkDate >= start && checkDate <= end;
+  });
+};
+
+// --- Main Component ---
 export default function Availability() {
-  const [availability, setAvailability] = useState([]);
+  const [availability, setAvailability] = useState<AvailabilityItem[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [expandedSavedCard, setExpandedSavedCard] = useState<number | null>(
     null,
   );
 
-  // New state to toggle the main setup form visibility
   const [showSetupForm, setShowSetupForm] = useState(false);
-  const [editingAvailability, setEditingAvailability] = useState(null);
-  const [editedData, setEditedData] = useState(null);
+  const [editingAvailability, setEditingAvailability] = useState<number | null>(
+    null,
+  );
+  const [editedData, setEditedData] = useState<Omit<
+    AvailabilityItem,
+    "id_availability"
+  > | null>(null);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-  ); // Default +7 days
+  );
   const [availableDays, setAvailableDays] = useState<number[]>([]);
 
-  useEffect(() => {
-    calculateAvailableDays(startDate, endDate);
-  }, [startDate, endDate]);
-
-  useEffect(() => {
-    loadAvailability();
-  }, []);
-
-  const loadAvailability = async () => {
-    try {
-      const data = await getAvailability();
-      setAvailability(data);
-    } catch (e) {
-      console.log(e);
-    } finally {
-      setLoadingAvailability(false);
-    }
-  };
-
-  const [days, setDays] = useState(
+  const [days, setDays] = useState<DaySetup[]>(
     WEEK_DAYS.map((day) => ({
       ...day,
       enabled: false,
@@ -94,6 +137,53 @@ export default function Availability() {
       pause_end: "13:00",
     })),
   );
+
+  useEffect(() => {
+    calculateAvailableDays(startDate, endDate);
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    loadAvailability();
+  }, []);
+
+  // Custom Memo Hook for handling calendar highlights if used in components
+  const markedDates = useMemo(() => {
+    const marked: Record<string, any> = {};
+
+    availability.forEach((item) => {
+      const start = parseDateOnlyString(item.start_date);
+      const end = parseDateOnlyString(item.end_date);
+      let current = new Date(start);
+
+      while (current <= end) {
+        const dateStr = formatDateString(current);
+
+        marked[dateStr] = {
+          disabled: true,
+          disableTouchEvent: true,
+          color: "#fee2e2",
+          textColor: "#ef4444",
+          startingDay: dateStr === item.start_date,
+          endingDay: dateStr === item.end_date,
+        };
+
+        current.setDate(current.getDate() + 1);
+      }
+    });
+
+    return marked;
+  }, [availability]);
+
+  const loadAvailability = async () => {
+    try {
+      const data = await getAvailability();
+      setAvailability(data || []);
+    } catch (e) {
+      console.log(e);
+    } finally {
+      setLoadingAvailability(false);
+    }
+  };
 
   const calculateAvailableDays = (start: Date, end: Date) => {
     const found = new Set<number>();
@@ -107,7 +197,7 @@ export default function Availability() {
     setAvailableDays([...found]);
   };
 
-  const updateDay = (id: number, field: string, value: any) => {
+  const updateDay = (id: number, field: keyof DaySetup, value: any) => {
     setDays((prev) =>
       prev.map((d) => (d.id === id ? { ...d, [field]: value } : d)),
     );
@@ -115,8 +205,8 @@ export default function Availability() {
 
   const setDates = async () => {
     const data = {
-      start_date: startDate.toISOString().split("T")[0],
-      end_date: endDate.toISOString().split("T")[0],
+      start_date: formatDateString(startDate),
+      end_date: formatDateString(endDate),
       availabilityDetails: days
         .filter((day) => day.enabled)
         .map((day) => ({
@@ -131,16 +221,15 @@ export default function Availability() {
     try {
       const message = await setAvailableDates(data);
       Alert.alert("Success", message);
-      setShowSetupForm(false); // Collapse form upon success
+      setShowSetupForm(false);
       await loadAvailability();
     } catch (error) {
       console.log(error);
     }
   };
 
-  const startEditing = (item) => {
+  const startEditing = (item: AvailabilityItem) => {
     setEditingAvailability(item.id_availability);
-
     setEditedData({
       start_date: item.start_date,
       end_date: item.end_date,
@@ -155,37 +244,37 @@ export default function Availability() {
   };
 
   const saveAvailability = async () => {
+    if (!editedData || !editingAvailability) return;
+
     const payload = {
       start_date: editedData.start_date,
       end_date: editedData.end_date,
       availabilityDetails: editedData.availabilityDetails,
     };
 
-    console.log(payload);
+    try {
+      await fetch(`YOUR_API/updateAvailability/${editingAvailability}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-    await fetch(`YOUR_API/updateAvailability/${editingAvailability}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    setEditingAvailability(null);
-    setEditedData(null);
-
-    // reload data
+      setEditingAvailability(null);
+      setEditedData(null);
+      await loadAvailability(); // Reload list after successful save
+    } catch (error) {
+      console.log("Error saving updates:", error);
+    }
   };
 
-  const deleteAvailability = async (id) => {
+  const deleteAvailability = async (id: number) => {
     Alert.alert(
       "Delete Availability",
       "Are you sure you want to delete this schedule?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
@@ -194,7 +283,6 @@ export default function Availability() {
               await fetch(`YOUR_API_URL/availability/${id}`, {
                 method: "DELETE",
               });
-
               setAvailability((prev) =>
                 prev.filter((item) => item.id_availability !== id),
               );
@@ -225,7 +313,6 @@ export default function Availability() {
           availability.map((item) => {
             const isSavedCardExpanded =
               expandedSavedCard === item.id_availability;
-
             const isEditing = editingAvailability === item.id_availability;
 
             return (
@@ -273,10 +360,9 @@ export default function Availability() {
                               style={styles.input}
                               value={editedData?.start_date}
                               onChangeText={(value) =>
-                                setEditedData((prev) => ({
-                                  ...prev,
-                                  start_date: value,
-                                }))
+                                setEditedData((prev) =>
+                                  prev ? { ...prev, start_date: value } : null,
+                                )
                               }
                             />
                           </View>
@@ -287,10 +373,9 @@ export default function Availability() {
                               style={styles.input}
                               value={editedData?.end_date}
                               onChangeText={(value) =>
-                                setEditedData((prev) => ({
-                                  ...prev,
-                                  end_date: value,
-                                }))
+                                setEditedData((prev) =>
+                                  prev ? { ...prev, end_date: value } : null,
+                                )
                               }
                             />
                           </View>
@@ -312,15 +397,14 @@ export default function Availability() {
                                   style={styles.timeInput}
                                   value={d.start_time.substring(0, 5)}
                                   onChangeText={(value) => {
+                                    if (!editedData) return;
                                     const details = [
                                       ...editedData.availabilityDetails,
                                     ];
-
                                     details[index] = {
                                       ...details[index],
                                       start_time: value + ":00",
                                     };
-
                                     setEditedData({
                                       ...editedData,
                                       availabilityDetails: details,
@@ -335,15 +419,14 @@ export default function Availability() {
                                   style={styles.timeInput}
                                   value={d.end_time.substring(0, 5)}
                                   onChangeText={(value) => {
+                                    if (!editedData) return;
                                     const details = [
                                       ...editedData.availabilityDetails,
                                     ];
-
                                     details[index] = {
                                       ...details[index],
                                       end_time: value + ":00",
                                     };
-
                                     setEditedData({
                                       ...editedData,
                                       availabilityDetails: details,
@@ -388,12 +471,11 @@ export default function Availability() {
                               </Text>
 
                               <Text style={styles.detailTimeText}>
-                                {d.start_time.slice(0, 5)}
-                                {" - "}
+                                {d.start_time.slice(0, 5)} -{" "}
                                 {d.end_time.slice(0, 5)}
                               </Text>
 
-                              {d.pause_start && (
+                              {d.pause_start && d.pause_end && (
                                 <Text style={styles.breakText}>
                                   Break: {d.pause_start.slice(0, 5)} -{" "}
                                   {d.pause_end.slice(0, 5)}
@@ -475,7 +557,17 @@ export default function Availability() {
                   mode="date"
                   display="compact"
                   style={styles.compactPicker}
-                  onChange={(e, date) => date && setStartDate(date)}
+                  onChange={(e, date) => {
+                    if (!date) return;
+                    if (isDateOccupied(date, availability)) {
+                      Alert.alert(
+                        "Date Occupied",
+                        "This date falls inside an already configured schedule range.",
+                      );
+                      return;
+                    }
+                    setStartDate(date);
+                  }}
                 />
               </View>
               <View style={styles.separator} />
@@ -487,7 +579,28 @@ export default function Availability() {
                   display="compact"
                   minimumDate={startDate}
                   style={styles.compactPicker}
-                  onChange={(e, date) => date && setEndDate(date)}
+                  onChange={(e, date) => {
+                    if (!date) return;
+
+                    let current = new Date(startDate);
+                    let hasConflict = false;
+                    while (current <= date) {
+                      if (isDateOccupied(current, availability)) {
+                        hasConflict = true;
+                        break;
+                      }
+                      current.setDate(current.getDate() + 1);
+                    }
+
+                    if (hasConflict) {
+                      Alert.alert(
+                        "Range Conflict",
+                        "Your selected end date creates a range that covers already occupied blocks.",
+                      );
+                      return;
+                    }
+                    setEndDate(date);
+                  }}
                 />
               </View>
             </View>
@@ -849,15 +962,15 @@ const styles = StyleSheet.create({
     borderTopColor: "#E2E8F0",
   },
   groupLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#94A3B8",
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
     marginBottom: 8,
   },
   timeRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
     gap: 12,
   },
   timeCell: {
@@ -866,28 +979,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    padding: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   timeLabel: {
     fontSize: 14,
-    fontWeight: "500",
-    color: "#64748B",
+    color: "#475569",
   },
   button: {
     backgroundColor: "#4F46E5",
-    paddingVertical: 15,
+    paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 24,
-    shadowColor: "#4F46E5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
   },
   buttonText: {
     color: "#FFFFFF",
@@ -895,21 +1001,20 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   loading: {
-    fontSize: 14,
+    textAlign: "center",
     color: "#64748B",
-    marginHorizontal: 20,
-    fontStyle: "italic",
+    marginVertical: 20,
   },
   editContainer: {
-    paddingTop: 16,
     marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
   dateRow: {
     flexDirection: "row",
     gap: 12,
-    marginBottom: 4,
+    marginBottom: 16,
   },
   dateBox: {
     flex: 1,
@@ -918,99 +1023,87 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: "#64748B",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   input: {
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
     color: "#0F172A",
-    fontSize: 15,
   },
   editDayCard: {
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 12,
     backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   dayTitleRow: {
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 8,
   },
   timeInput: {
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    color: "#0F172A",
-    fontSize: 15,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 14,
+    textAlign: "center",
   },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: 10,
-    marginTop: 20,
+    gap: 12,
+    marginTop: 16,
   },
   cancelButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
     backgroundColor: "#F1F5F9",
   },
   cancelButtonText: {
-    color: "#64748B",
+    color: "#475569",
     fontWeight: "600",
-    fontSize: 14,
   },
   saveButton: {
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    borderRadius: 10,
-    backgroundColor: "#0F172A",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: "#4F46E5",
   },
   saveButtonText: {
     color: "#FFFFFF",
     fontWeight: "600",
-    fontSize: 14,
   },
   actionButtons: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: 10,
-    marginTop: 16,
+    gap: 16,
+    marginTop: 14,
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
   editButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
   },
   editButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
     color: "#4F46E5",
+    fontWeight: "600",
+    fontSize: 14,
   },
   deleteButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#FEF2F2",
   },
   deleteButtonText: {
     color: "#EF4444",
