@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
@@ -14,6 +15,7 @@ import {
   getAvailability,
   setAvailableDates,
 } from "@/javascript/AvailableDates";
+import { Ionicons } from "@expo/vector-icons";
 
 const WEEK_DAYS = [
   { id: 1, name: "Monday" },
@@ -54,6 +56,8 @@ export default function Availability() {
 
   // New state to toggle the main setup form visibility
   const [showSetupForm, setShowSetupForm] = useState(false);
+  const [editingAvailability, setEditingAvailability] = useState(null);
+  const [editedData, setEditedData] = useState(null);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(
@@ -134,6 +138,75 @@ export default function Availability() {
     }
   };
 
+  const startEditing = (item) => {
+    setEditingAvailability(item.id_availability);
+
+    setEditedData({
+      start_date: item.start_date,
+      end_date: item.end_date,
+      availabilityDetails: item.availabilityDetails.map((d) => ({
+        day_of_week: d.day_of_week,
+        start_time: d.start_time,
+        end_time: d.end_time,
+        pause_start: d.pause_start,
+        pause_end: d.pause_end,
+      })),
+    });
+  };
+
+  const saveAvailability = async () => {
+    const payload = {
+      start_date: editedData.start_date,
+      end_date: editedData.end_date,
+      availabilityDetails: editedData.availabilityDetails,
+    };
+
+    console.log(payload);
+
+    await fetch(`YOUR_API/updateAvailability/${editingAvailability}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    setEditingAvailability(null);
+    setEditedData(null);
+
+    // reload data
+  };
+
+  const deleteAvailability = async (id) => {
+    Alert.alert(
+      "Delete Availability",
+      "Are you sure you want to delete this schedule?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await fetch(`YOUR_API_URL/availability/${id}`, {
+                method: "DELETE",
+              });
+
+              setAvailability((prev) =>
+                prev.filter((item) => item.id_availability !== id),
+              );
+            } catch (error) {
+              console.log(error);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -152,6 +225,9 @@ export default function Availability() {
           availability.map((item) => {
             const isSavedCardExpanded =
               expandedSavedCard === item.id_availability;
+
+            const isEditing = editingAvailability === item.id_availability;
+
             return (
               <View key={item.id_availability} style={styles.cardGroupOuter}>
                 <View style={styles.currentCard}>
@@ -166,6 +242,7 @@ export default function Availability() {
                     <Text style={styles.currentDateRange}>
                       {item.start_date} → {item.end_date}
                     </Text>
+
                     <Text
                       style={[
                         styles.chevron,
@@ -177,32 +254,179 @@ export default function Availability() {
                   </Pressable>
 
                   {isSavedCardExpanded &&
-                    item.availabilityDetails.map((d, index) => (
-                      <View key={index} style={styles.currentDetailItem}>
-                        <View style={styles.detailBadge} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.dayNameActive}>
-                            {DAY_NAMES[d.day_of_week]}
-                          </Text>
-                          <Text style={styles.statusSubtitle}>
-                            {d.start_time.slice(0, 5)} -{" "}
-                            {d.end_time.slice(0, 5)}
-                          </Text>
-                          {d.pause_start && (
-                            <Text style={styles.breakText}>
-                              Break: {d.pause_start.slice(0, 5)} -{" "}
-                              {d.pause_end.slice(0, 5)}
-                            </Text>
-                          )}
+                    (isEditing ? (
+                      <View style={styles.editContainer}>
+                        <View style={styles.dateRow}>
+                          <View style={styles.dateBox}>
+                            <Text style={styles.inputLabel}>Start date</Text>
+
+                            <TextInput
+                              style={styles.input}
+                              value={editedData?.start_date}
+                              onChangeText={(value) =>
+                                setEditedData((prev) => ({
+                                  ...prev,
+                                  start_date: value,
+                                }))
+                              }
+                            />
+                          </View>
+
+                          <View style={styles.dateBox}>
+                            <Text style={styles.inputLabel}>End date</Text>
+
+                            <TextInput
+                              style={styles.input}
+                              value={editedData?.end_date}
+                              onChangeText={(value) =>
+                                setEditedData((prev) => ({
+                                  ...prev,
+                                  end_date: value,
+                                }))
+                              }
+                            />
+                          </View>
+                        </View>
+
+                        {editedData?.availabilityDetails.map((d, index) => (
+                          <View key={index} style={styles.editDayCard}>
+                            <View style={styles.dayTitleRow}>
+                              <View style={styles.detailBadge} />
+
+                              <Text style={styles.dayNameActive}>
+                                {DAY_NAMES[d.day_of_week]}
+                              </Text>
+                            </View>
+
+                            <View style={styles.timeRow}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Start</Text>
+
+                                <TextInput
+                                  style={styles.timeInput}
+                                  value={d.start_time.substring(0, 5)}
+                                  onChangeText={(value) => {
+                                    const details = [
+                                      ...editedData.availabilityDetails,
+                                    ];
+
+                                    details[index] = {
+                                      ...details[index],
+                                      start_time: value + ":00",
+                                    };
+
+                                    setEditedData({
+                                      ...editedData,
+                                      availabilityDetails: details,
+                                    });
+                                  }}
+                                />
+                              </View>
+
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>End</Text>
+
+                                <TextInput
+                                  style={styles.timeInput}
+                                  value={d.end_time.substring(0, 5)}
+                                  onChangeText={(value) => {
+                                    const details = [
+                                      ...editedData.availabilityDetails,
+                                    ];
+
+                                    details[index] = {
+                                      ...details[index],
+                                      end_time: value + ":00",
+                                    };
+
+                                    setEditedData({
+                                      ...editedData,
+                                      availabilityDetails: details,
+                                    });
+                                  }}
+                                />
+                              </View>
+                            </View>
+                          </View>
+                        ))}
+
+                        <View style={styles.buttonRow}>
+                          <Pressable
+                            style={styles.cancelButton}
+                            onPress={() => {
+                              setEditingAvailability(null);
+                              setEditedData(null);
+                            }}
+                          >
+                            <Text>Cancel</Text>
+                          </Pressable>
+
+                          <Pressable
+                            style={styles.saveButton}
+                            onPress={saveAvailability}
+                          >
+                            <Text>Save</Text>
+                          </Pressable>
                         </View>
                       </View>
-                    ))}
+                    ) : (
+                      <>
+                        {item.availabilityDetails.map((d, index) => (
+                          <View key={index} style={styles.currentDetailItem}>
+                            <View style={styles.detailBadge} />
 
-                  {!isSavedCardExpanded && (
-                    <Text style={styles.tapToViewText}>
-                      Tap to view scheduled days
-                    </Text>
-                  )}
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.dayNameActive}>
+                                {DAY_NAMES[d.day_of_week]}
+                              </Text>
+
+                              <Text>
+                                {d.start_time.slice(0, 5)}
+                                {" - "}
+                                {d.end_time.slice(0, 5)}
+                              </Text>
+
+                              {d.pause_start && (
+                                <Text>
+                                  Break: {d.pause_start.slice(0, 5)}-
+                                  {d.pause_end.slice(0, 5)}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+                        ))}
+
+                        <View style={styles.actionButtons}>
+                          <Pressable
+                            style={styles.editButton}
+                            onPress={() => startEditing(item)}
+                          >
+                            <Ionicons
+                              name="create-outline"
+                              size={18}
+                              color="#333"
+                            />
+
+                            <Text style={styles.editButtonText}>Edit</Text>
+                          </Pressable>
+
+                          <Pressable
+                            style={styles.deleteButton}
+                            onPress={() =>
+                              deleteAvailability(item.id_availability)
+                            }
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={18}
+                              color="#D32F2F"
+                            />
+
+                            <Text style={styles.deleteButtonText}>Delete</Text>
+                          </Pressable>
+                        </View>
+                      </>
+                    ))}
                 </View>
               </View>
             );
@@ -677,5 +901,113 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginHorizontal: 24,
     fontStyle: "italic",
+  },
+
+  editContainer: {
+    paddingTop: 15,
+  },
+
+  dateRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+
+  dateBox: {
+    flex: 1,
+  },
+
+  inputLabel: {
+    fontSize: 12,
+    color: "#777",
+    marginBottom: 5,
+  },
+
+  editDayCard: {
+    marginTop: 15,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "#f6f6f6",
+  },
+
+  dayTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  timeRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 10,
+  },
+
+  timeInput: {
+    height: 42,
+    borderRadius: 10,
+    backgroundColor: "white",
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 15,
+  },
+
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#eee",
+  },
+
+  saveButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#222",
+  },
+  editButton: {
+    marginTop: 15,
+    alignSelf: "flex-end",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 15,
+  },
+
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#FFECEC",
+  },
+
+  deleteButtonText: {
+    color: "#D32F2F",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });
