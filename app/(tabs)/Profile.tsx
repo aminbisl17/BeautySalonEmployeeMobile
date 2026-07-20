@@ -1,4 +1,5 @@
 import { getData } from "@/javascript/ProfileAPI";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useCallback, useEffect, useState } from "react";
@@ -11,35 +12,32 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-
   const loadUser = async (isRefresh = false) => {
-  try {
-    await getData();
+    try {
+      await getData();
 
-    const data = await SecureStore.getItemAsync("userDetails");
-    if (data) setUser(JSON.parse(data));
-
-  } catch (e) {
-    console.log(e);
-  } finally {
-    if (!isRefresh) setLoading(false);
-  }
-};
-
+      const data = await SecureStore.getItemAsync("userDetails");
+      if (data) setUser(JSON.parse(data));
+    } catch (e) {
+      console.log(e);
+    } finally {
+      if (!isRefresh) setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    
     loadUser();
   }, []);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadUser();
+    await loadUser(true);
     setRefreshing(false);
   }, []);
 
@@ -58,21 +56,27 @@ export default function Profile() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#4F46E5" />
         <Text style={styles.loadingText}>Loading profile…</Text>
       </View>
     );
   }
 
   return (
-    <>
-     <ScrollView
-        style={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-        }
-      >
-      {/* Header */}
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#4F46E5"
+          colors={["#4F46E5"]}
+        />
+      }
+    >
+      {/* Header Profile Section */}
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -88,161 +92,209 @@ export default function Profile() {
         <Text style={styles.username}>@{user?.username}</Text>
       </View>
 
-      {/* Grouped Card */}
+      {/* User Information Grouped Card */}
+      <Text style={styles.sectionTitle}>Account Details</Text>
       <View style={styles.group}>
         <View style={styles.row}>
-          <Text style={styles.label}>Email</Text>
-          <Text style={styles.value}>{user?.email}</Text>
+          <View style={styles.rowLeft}>
+            <Ionicons
+              name="mail-outline"
+              size={18}
+              color="#64748B"
+              style={styles.icon}
+            />
+            <View>
+              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.value}>{user?.email}</Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.separator} />
 
         <View style={styles.row}>
-          <Text style={styles.label}>Phone</Text>
-          <Text style={styles.value}>{user?.numri_telefonit}</Text>
+          <View style={styles.rowLeft}>
+            <Ionicons
+              name="call-outline"
+              size={18}
+              color="#64748B"
+              style={styles.icon}
+            />
+            <View>
+              <Text style={styles.label}>Phone Number</Text>
+              <Text style={styles.value}>
+                {user?.numri_telefonit || "Not Provided"}
+              </Text>
+            </View>
+          </View>
         </View>
 
         <View style={styles.separator} />
 
         <View style={styles.row}>
-          <Text style={styles.label}>Username</Text>
-          <Text style={styles.value}>@{user?.username}</Text>
+          <View style={styles.rowLeft}>
+            <Ionicons
+              name="at-outline"
+              size={18}
+              color="#64748B"
+              style={styles.icon}
+            />
+            <View>
+              <Text style={styles.label}>Username</Text>
+              <Text style={styles.value}>@{user?.username}</Text>
+            </View>
+          </View>
         </View>
       </View>
 
+      {/* Logout Action Area */}
       <TouchableOpacity
         onPress={handleLogout}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
         style={styles.logoutButton}
       >
+        <Ionicons
+          name="log-out-outline"
+          size={18}
+          color="#EF4444"
+          style={{ marginRight: 6 }}
+        />
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
-    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7", // iOS system background
-    padding: 20,
+    backgroundColor: "#F8FAFC",
   },
-
+  contentContainer: {
+    paddingBottom: 40,
+    paddingTop: 24,
+  },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#F8FAFC",
   },
-
   loadingText: {
-    marginTop: 10,
-    color: "#8E8E93",
-    fontSize: 14,
+    marginTop: 12,
+    color: "#64748B",
+    fontSize: 15,
+    fontWeight: "500",
   },
-
-  // HEADER (Apple ID style)
   header: {
     alignItems: "center",
-    marginTop: 30,
-    marginBottom: 25,
+    marginTop: 20,
+    marginBottom: 32,
   },
-
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: "#007AFF",
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#4F46E5",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
-
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    marginBottom: 16,
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 4,
   },
-
   avatarText: {
-    color: "white",
-    fontSize: 28,
+    color: "#FFFFFF",
+    fontSize: 30,
     fontWeight: "600",
+    letterSpacing: 0.5,
   },
-
   name: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#1C1C1E",
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#0F172A",
+    letterSpacing: -0.5,
   },
-
   username: {
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#64748B",
     marginTop: 4,
+    fontWeight: "500",
   },
-
-  // GROUPED CARD (iOS Settings style)
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+    marginBottom: 10,
+    marginHorizontal: 20,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+  },
   group: {
-    backgroundColor: "white",
-    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     overflow: "hidden",
-    marginTop: 10,
-
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
     elevation: 2,
   },
-
   row: {
     paddingVertical: 14,
     paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "between",
   },
-
+  rowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  icon: {
+    marginRight: 14,
+    marginTop: 2,
+  },
   label: {
-    fontSize: 12,
-    color: "#8E8E93",
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94A3B8",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginBottom: 2,
   },
-
   value: {
     fontSize: 16,
-    color: "#1C1C1E",
+    color: "#0F172A",
     fontWeight: "500",
   },
-
   separator: {
     height: 1,
-    backgroundColor: "#E5E5EA",
-    marginLeft: 16,
+    backgroundColor: "#F1F5F9",
+    marginLeft: 48, // Aligns cleanly past the icon edge
   },
   logoutButton: {
-    marginTop: 30,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    marginTop: 24,
+    marginHorizontal: 20,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 14,
     paddingVertical: 14,
-    paddingHorizontal: 16,
-
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-
     borderWidth: 1,
-    borderColor: "#F2F2F7",
-
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
+    borderColor: "#FEE2E2",
   },
-
   logoutText: {
-    color: "#FF3B30", // iOS system red
+    color: "#EF4444",
     fontSize: 16,
     fontWeight: "600",
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
 });

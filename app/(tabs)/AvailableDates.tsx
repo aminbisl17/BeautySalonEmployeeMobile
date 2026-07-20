@@ -230,7 +230,12 @@ export default function Availability() {
 
             return (
               <View key={item.id_availability} style={styles.cardGroupOuter}>
-                <View style={styles.currentCard}>
+                <View
+                  style={[
+                    styles.currentCard,
+                    isSavedCardExpanded && styles.cardActiveShadow,
+                  ]}
+                >
                   <Pressable
                     style={styles.currentHeaderRow}
                     onPress={() =>
@@ -239,18 +244,23 @@ export default function Availability() {
                       )
                     }
                   >
-                    <Text style={styles.currentDateRange}>
-                      {item.start_date} → {item.end_date}
-                    </Text>
+                    <View style={styles.headerTitleContainer}>
+                      <Ionicons
+                        name="calendar-outline"
+                        size={18}
+                        color="#4F46E5"
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.currentDateRange}>
+                        {item.start_date} → {item.end_date}
+                      </Text>
+                    </View>
 
-                    <Text
-                      style={[
-                        styles.chevron,
-                        isSavedCardExpanded && styles.chevronExpanded,
-                      ]}
-                    >
-                      ›
-                    </Text>
+                    <Ionicons
+                      name={isSavedCardExpanded ? "chevron-up" : "chevron-down"}
+                      size={20}
+                      color="#94A3B8"
+                    />
                   </Pressable>
 
                   {isSavedCardExpanded &&
@@ -258,8 +268,7 @@ export default function Availability() {
                       <View style={styles.editContainer}>
                         <View style={styles.dateRow}>
                           <View style={styles.dateBox}>
-                            <Text style={styles.inputLabel}>Start date</Text>
-
+                            <Text style={styles.inputLabel}>Start Date</Text>
                             <TextInput
                               style={styles.input}
                               value={editedData?.start_date}
@@ -273,8 +282,7 @@ export default function Availability() {
                           </View>
 
                           <View style={styles.dateBox}>
-                            <Text style={styles.inputLabel}>End date</Text>
-
+                            <Text style={styles.inputLabel}>End Date</Text>
                             <TextInput
                               style={styles.input}
                               value={editedData?.end_date}
@@ -292,7 +300,6 @@ export default function Availability() {
                           <View key={index} style={styles.editDayCard}>
                             <View style={styles.dayTitleRow}>
                               <View style={styles.detailBadge} />
-
                               <Text style={styles.dayNameActive}>
                                 {DAY_NAMES[d.day_of_week]}
                               </Text>
@@ -301,7 +308,6 @@ export default function Availability() {
                             <View style={styles.timeRow}>
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.inputLabel}>Start</Text>
-
                                 <TextInput
                                   style={styles.timeInput}
                                   value={d.start_time.substring(0, 5)}
@@ -325,7 +331,6 @@ export default function Availability() {
 
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.inputLabel}>End</Text>
-
                                 <TextInput
                                   style={styles.timeInput}
                                   value={d.end_time.substring(0, 5)}
@@ -358,14 +363,16 @@ export default function Availability() {
                               setEditedData(null);
                             }}
                           >
-                            <Text>Cancel</Text>
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
                           </Pressable>
 
                           <Pressable
                             style={styles.saveButton}
                             onPress={saveAvailability}
                           >
-                            <Text>Save</Text>
+                            <Text style={styles.saveButtonText}>
+                              Save Updates
+                            </Text>
                           </Pressable>
                         </View>
                       </View>
@@ -380,15 +387,15 @@ export default function Availability() {
                                 {DAY_NAMES[d.day_of_week]}
                               </Text>
 
-                              <Text>
+                              <Text style={styles.detailTimeText}>
                                 {d.start_time.slice(0, 5)}
                                 {" - "}
                                 {d.end_time.slice(0, 5)}
                               </Text>
 
                               {d.pause_start && (
-                                <Text>
-                                  Break: {d.pause_start.slice(0, 5)}-
+                                <Text style={styles.breakText}>
+                                  Break: {d.pause_start.slice(0, 5)} -{" "}
                                   {d.pause_end.slice(0, 5)}
                                 </Text>
                               )}
@@ -403,10 +410,10 @@ export default function Availability() {
                           >
                             <Ionicons
                               name="create-outline"
-                              size={18}
-                              color="#333"
+                              size={16}
+                              color="#4F46E5"
+                              style={{ marginRight: 4 }}
                             />
-
                             <Text style={styles.editButtonText}>Edit</Text>
                           </Pressable>
 
@@ -418,10 +425,10 @@ export default function Availability() {
                           >
                             <Ionicons
                               name="trash-outline"
-                              size={18}
-                              color="#D32F2F"
+                              size={16}
+                              color="#EF4444"
+                              style={{ marginRight: 4 }}
                             />
-
                             <Text style={styles.deleteButtonText}>Delete</Text>
                           </Pressable>
                         </View>
@@ -449,14 +456,11 @@ export default function Availability() {
               Define your dates, active days, and times
             </Text>
           </View>
-          <Text
-            style={[
-              styles.mainChevron,
-              showSetupForm && styles.chevronExpanded,
-            ]}
-          >
-            ›
-          </Text>
+          <Ionicons
+            name={showSetupForm ? "chevron-up" : "chevron-down"}
+            size={22}
+            color="#4F46E5"
+          />
         </Pressable>
 
         {showSetupForm && (
@@ -489,7 +493,7 @@ export default function Availability() {
             </View>
 
             {/* WORKING DAYS */}
-            <Text style={[styles.innerSectionTitle, { marginTop: 20 }]}>
+            <Text style={[styles.innerSectionTitle, { marginTop: 24 }]}>
               Working Days Setup
             </Text>
             {days
@@ -526,21 +530,18 @@ export default function Availability() {
 
                         <View style={styles.headerRight}>
                           <Switch
-                            trackColor={{ false: "#E5E5EA", true: "#6366F1" }}
-                            thumbColor="#FFFFFF"
+                            trackColor={{ false: "#E2E8F0", true: "#818CF8" }}
+                            thumbColor={day.enabled ? "#4F46E5" : "#94A3B8"}
                             value={day.enabled}
                             onValueChange={(v) =>
                               updateDay(day.id, "enabled", v)
                             }
                           />
-                          <Text
-                            style={[
-                              styles.chevron,
-                              isExpanded && styles.chevronExpanded,
-                            ]}
-                          >
-                            ›
-                          </Text>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "chevron-down"}
+                            size={18}
+                            color="#94A3B8"
+                          />
                         </View>
                       </Pressable>
 
@@ -650,7 +651,7 @@ const styles = StyleSheet.create({
     paddingTop: 24,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "700",
     color: "#0F172A",
     letterSpacing: -0.6,
@@ -658,23 +659,22 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#64748B",
     marginBottom: 12,
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
   innerSectionTitle: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#64748B",
     marginBottom: 8,
-    marginLeft: 4,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
@@ -691,15 +691,16 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
     elevation: 2,
   },
   setupToggleFormButtonActive: {
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    backgroundColor: "#FAFAFC",
-    borderBottomWidth: 0,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   setupToggleTitle: {
     fontSize: 16,
@@ -707,57 +708,69 @@ const styles = StyleSheet.create({
     color: "#4F46E5",
   },
   setupToggleSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#64748B",
     marginTop: 2,
   },
   formContainer: {
     backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
-    padding: 16,
+    padding: 20,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: "#E2E8F0",
-    paddingTop: 12,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 12,
+    elevation: 2,
   },
   cardGroupOuter: {
     marginBottom: 12,
   },
   cardGroup: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
   cardActiveBorder: {
-    borderColor: "#CBD5E1",
+    borderColor: "#C7D2FE",
   },
   currentCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     marginHorizontal: 20,
-    padding: 16,
+    padding: 18,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
     elevation: 2,
+  },
+  cardActiveShadow: {
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    borderColor: "#C7D2FE",
   },
   currentHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingBottom: 4,
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   currentDateRange: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#1E293B",
+    color: "#0F172A",
   },
   currentDetailItem: {
     flexDirection: "row",
@@ -771,22 +784,27 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#6366F1",
-    marginTop: 8,
+    backgroundColor: "#4F46E5",
+    marginTop: 6,
     marginRight: 10,
+  },
+  detailTimeText: {
+    fontSize: 14,
+    color: "#334155",
+    marginTop: 2,
   },
   cellRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    minHeight: 52,
+    minHeight: 56,
   },
   cellLabel: {
     fontSize: 15,
     fontWeight: "500",
-    color: "#1E293B",
+    color: "#334155",
   },
   compactPicker: {
     marginRight: -4,
@@ -807,6 +825,7 @@ const styles = StyleSheet.create({
   dayNameActive: {
     color: "#0F172A",
     fontWeight: "600",
+    fontSize: 15,
   },
   statusSubtitle: {
     fontSize: 13,
@@ -814,35 +833,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   breakText: {
-    fontSize: 12,
-    color: "#94A3B8",
+    fontSize: 13,
+    color: "#64748B",
     marginTop: 2,
-  },
-  tapToViewText: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 4,
-    fontStyle: "italic",
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  chevron: {
-    fontSize: 22,
-    color: "#94A3B8",
-    fontWeight: "300",
-    transform: [{ rotate: "90deg" }],
-  },
-  mainChevron: {
-    fontSize: 26,
-    color: "#4F46E5",
-    fontWeight: "300",
-    transform: [{ rotate: "90deg" }],
-  },
-  chevronExpanded: {
-    transform: [{ rotate: "-90deg" }],
+    gap: 8,
   },
   dayContent: {
     padding: 16,
@@ -853,7 +851,7 @@ const styles = StyleSheet.create({
   groupLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748B",
+    color: "#94A3B8",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
@@ -880,15 +878,15 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
   button: {
-    backgroundColor: "#6366F1",
-    paddingVertical: 16,
+    backgroundColor: "#4F46E5",
+    paddingVertical: 15,
     borderRadius: 12,
     alignItems: "center",
     marginTop: 24,
-    shadowColor: "#6366F1",
+    shadowColor: "#4F46E5",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 3,
   },
   buttonText: {
@@ -899,114 +897,123 @@ const styles = StyleSheet.create({
   loading: {
     fontSize: 14,
     color: "#64748B",
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     fontStyle: "italic",
   },
-
   editContainer: {
-    paddingTop: 15,
+    paddingTop: 16,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
   },
-
   dateRow: {
     flexDirection: "row",
     gap: 12,
+    marginBottom: 4,
   },
-
   dateBox: {
     flex: 1,
   },
-
   inputLabel: {
     fontSize: 12,
-    color: "#777",
-    marginBottom: 5,
+    fontWeight: "600",
+    color: "#64748B",
+    marginBottom: 6,
   },
-
+  input: {
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    color: "#0F172A",
+    fontSize: 15,
+  },
   editDayCard: {
-    marginTop: 15,
-    padding: 12,
-    borderRadius: 14,
-    backgroundColor: "#f6f6f6",
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
-
   dayTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
   },
-
-  timeRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 10,
-  },
-
   timeInput: {
-    height: 42,
+    height: 44,
     borderRadius: 10,
-    backgroundColor: "white",
-    paddingHorizontal: 12,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#E2E8F0",
+    color: "#0F172A",
+    fontSize: 15,
   },
-
   buttonRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
-    marginTop: 15,
+    marginTop: 20,
   },
-
   cancelButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#eee",
-  },
-
-  saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#222",
-  },
-  editButton: {
-    marginTop: 15,
-    alignSelf: "flex-end",
     paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: "#fff",
-    flexDirection: "row",
-    alignItems: "center",
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: "#F1F5F9",
   },
-
-  editButtonText: {
-    fontSize: 14,
+  cancelButtonText: {
+    color: "#64748B",
     fontWeight: "600",
-    color: "#333",
+    fontSize: 14,
+  },
+  saveButton: {
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: "#0F172A",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
   },
   actionButtons: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 10,
-    marginTop: 15,
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
   },
-
+  editButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4F46E5",
+  },
   deleteButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#FFECEC",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#FEF2F2",
   },
-
   deleteButtonText: {
-    color: "#D32F2F",
+    color: "#EF4444",
     fontWeight: "600",
     fontSize: 14,
   },
