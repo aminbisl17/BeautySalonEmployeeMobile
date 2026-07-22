@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -42,7 +41,6 @@ interface DaySetup {
   pause_start: string;
   pause_end: string;
 }
-
 // --- Constants & Static Helpers ---
 const WEEK_DAYS = [
   { id: 1, name: "Monday" },
@@ -121,6 +119,8 @@ export default function Availability() {
     "id_availability"
   > | null>(null);
 
+  const [editStartDate, setEditStartDate] = useState(new Date());
+  const [editEndDate, setEditEndDate] = useState(new Date());
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -230,6 +230,10 @@ export default function Availability() {
 
   const startEditing = (item: AvailabilityItem) => {
     setEditingAvailability(item.id_availability);
+
+    setEditStartDate(new Date(item.start_date));
+    setEditEndDate(new Date(item.end_date));
+
     setEditedData({
       start_date: item.start_date,
       end_date: item.end_date,
@@ -356,27 +360,56 @@ export default function Availability() {
                         <View style={styles.dateRow}>
                           <View style={styles.dateBox}>
                             <Text style={styles.inputLabel}>Start Date</Text>
-                            <TextInput
-                              style={styles.input}
-                              value={editedData?.start_date}
-                              onChangeText={(value) =>
+                            <DateTimePicker
+                              value={editStartDate}
+                              mode="date"
+                              display="compact"
+                              onChange={(e, date) => {
+                                if (!date) return;
+
+                                setEditStartDate(date);
+
+                                const formatted = date
+                                  .toISOString()
+                                  .split("T")[0];
+
                                 setEditedData((prev) =>
-                                  prev ? { ...prev, start_date: value } : null,
-                                )
-                              }
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        start_date: formatted,
+                                      }
+                                    : null,
+                                );
+                              }}
                             />
                           </View>
 
                           <View style={styles.dateBox}>
                             <Text style={styles.inputLabel}>End Date</Text>
-                            <TextInput
-                              style={styles.input}
-                              value={editedData?.end_date}
-                              onChangeText={(value) =>
+                            <DateTimePicker
+                              value={editEndDate}
+                              mode="date"
+                              display="compact"
+                              minimumDate={editStartDate}
+                              onChange={(e, date) => {
+                                if (!date) return;
+
+                                setEditEndDate(date);
+
+                                const formatted = date
+                                  .toISOString()
+                                  .split("T")[0];
+
                                 setEditedData((prev) =>
-                                  prev ? { ...prev, end_date: value } : null,
-                                )
-                              }
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        end_date: formatted,
+                                      }
+                                    : null,
+                                );
+                              }}
                             />
                           </View>
                         </View>
@@ -393,18 +426,23 @@ export default function Availability() {
                             <View style={styles.timeRow}>
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.inputLabel}>Start</Text>
-                                <TextInput
-                                  style={styles.timeInput}
-                                  value={d.start_time.substring(0, 5)}
-                                  onChangeText={(value) => {
-                                    if (!editedData) return;
+                                <DateTimePicker
+                                  value={parseTimeString(d.start_time)}
+                                  mode="time"
+                                  display="compact"
+                                  is24Hour={true}
+                                  onChange={(e, date) => {
+                                    if (!date || !editedData) return;
+
                                     const details = [
                                       ...editedData.availabilityDetails,
                                     ];
+
                                     details[index] = {
                                       ...details[index],
-                                      start_time: value + ":00",
+                                      start_time: formatTimeString(date),
                                     };
+
                                     setEditedData({
                                       ...editedData,
                                       availabilityDetails: details,
@@ -415,18 +453,23 @@ export default function Availability() {
 
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.inputLabel}>End</Text>
-                                <TextInput
-                                  style={styles.timeInput}
-                                  value={d.end_time.substring(0, 5)}
-                                  onChangeText={(value) => {
-                                    if (!editedData) return;
+                                <DateTimePicker
+                                  value={parseTimeString(d.end_time)}
+                                  mode="time"
+                                  display="compact"
+                                  is24Hour={true}
+                                  onChange={(e, date) => {
+                                    if (!date || !editedData) return;
+
                                     const details = [
                                       ...editedData.availabilityDetails,
                                     ];
+
                                     details[index] = {
                                       ...details[index],
-                                      end_time: value + ":00",
+                                      end_time: formatTimeString(date),
                                     };
+
                                     setEditedData({
                                       ...editedData,
                                       availabilityDetails: details,
