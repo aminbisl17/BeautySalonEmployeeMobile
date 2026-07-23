@@ -18,7 +18,7 @@ export default function Home() {
         <Text style={styles.arrow}>›</Text>
       </Pressable>
 
-      <Pressable style={styles.card}>
+      <Pressable style={styles.card} onPress={() => router.push("/Terminet")}>
         <View>
           <Text style={styles.title}>Terminet</Text>
           <Text style={styles.subtitle}>Set your working schedule</Text>

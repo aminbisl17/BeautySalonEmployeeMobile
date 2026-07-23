@@ -53,7 +53,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="AvailableDates"
         options={{
-          href: null, // hides it from the tab bar
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="Terminet"
+        options={{
+          href: null,
         }}
       />
     </Tabs>
