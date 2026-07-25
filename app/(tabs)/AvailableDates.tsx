@@ -1,8 +1,9 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
@@ -13,6 +14,7 @@ import {
 import {
   getAvailability,
   setAvailableDates,
+  updateDates,
 } from "@/javascript/AvailableDates";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -109,6 +111,7 @@ export default function Availability() {
   const [expandedSavedCard, setExpandedSavedCard] = useState<number | null>(
     null,
   );
+  const [refreshing, setRefreshing] = useState(false);
 
   const [showSetupForm, setShowSetupForm] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<number | null>(
@@ -127,11 +130,17 @@ export default function Availability() {
   );
   const [availableDays, setAvailableDays] = useState<number[]>([]);
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAvailability();
+    setRefreshing(false);
+  }, []);
+
   const [days, setDays] = useState<DaySetup[]>(
     WEEK_DAYS.map((day) => ({
       ...day,
       enabled: false,
-      start_time: "09:00",
+      start_time: "08:00",
       end_time: "17:00",
       pause_start: "12:00",
       pause_end: "13:00",
@@ -231,18 +240,15 @@ export default function Availability() {
   const startEditing = (item: AvailabilityItem) => {
     setEditingAvailability(item.id_availability);
 
-    setEditStartDate(new Date(item.start_date));
-    setEditEndDate(new Date(item.end_date));
-
     setEditedData({
-      start_date: item.start_date,
-      end_date: item.end_date,
+      start_date: item.start_date, // Kept in payload structure if required by API schema, but not editable
+      end_date: item.end_date, // Kept in payload structure if required by API schema, but not editable
       availabilityDetails: item.availabilityDetails.map((d) => ({
         day_of_week: d.day_of_week,
         start_time: d.start_time,
         end_time: d.end_time,
-        pause_start: d.pause_start,
-        pause_end: d.pause_end,
+        pause_start: d.pause_start || "12:00:00", // Fallback default if empty
+        pause_end: d.pause_end || "13:00:00", // Fallback default if empty
       })),
     });
   };
@@ -250,26 +256,30 @@ export default function Availability() {
   const saveAvailability = async () => {
     if (!editedData || !editingAvailability) return;
 
-    const payload = {
-      start_date: editedData.start_date,
-      end_date: editedData.end_date,
-      availabilityDetails: editedData.availabilityDetails,
-    };
-
     try {
-      await fetch(`YOUR_API/updateAvailability/${editingAvailability}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      // 1. Send the updated payload
+      const updatedRecord = await updateDates(editedData, editingAvailability);
 
+      // 2. Option A: Update local state immediately using functional state update
+      setAvailability((prevList) =>
+        prevList.map((item) =>
+          item.id_availability === editingAvailability
+            ? { ...item, ...editedData } // or updatedRecord if backend returns updated object
+            : item,
+        ),
+      );
+
+      console.log(editingAvailability);
+      console.log(editedData);
+      console.log(updatedRecord);
+      // Close edit mode
       setEditingAvailability(null);
       setEditedData(null);
-      await loadAvailability(); // Reload list after successful save
+
+      // 3. Option B: Refetch fresh data from API
+      // await loadAvailability();
     } catch (error) {
-      console.log("Error saving updates:", error);
+      console.error("Error saving availability updates:", error);
     }
   };
 
@@ -304,6 +314,14 @@ export default function Availability() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#4F46E5"
+          colors={["#4F46E5"]}
+        />
+      }
     >
       <Text style={styles.title}>Availability</Text>
 
@@ -357,62 +375,7 @@ export default function Availability() {
                   {isSavedCardExpanded &&
                     (isEditing ? (
                       <View style={styles.editContainer}>
-                        <View style={styles.dateRow}>
-                          <View style={styles.dateBox}>
-                            <Text style={styles.inputLabel}>Start Date</Text>
-                            <DateTimePicker
-                              value={editStartDate}
-                              mode="date"
-                              display="compact"
-                              onChange={(e, date) => {
-                                if (!date) return;
-
-                                setEditStartDate(date);
-
-                                const formatted = date
-                                  .toISOString()
-                                  .split("T")[0];
-
-                                setEditedData((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        start_date: formatted,
-                                      }
-                                    : null,
-                                );
-                              }}
-                            />
-                          </View>
-
-                          <View style={styles.dateBox}>
-                            <Text style={styles.inputLabel}>End Date</Text>
-                            <DateTimePicker
-                              value={editEndDate}
-                              mode="date"
-                              display="compact"
-                              minimumDate={editStartDate}
-                              onChange={(e, date) => {
-                                if (!date) return;
-
-                                setEditEndDate(date);
-
-                                const formatted = date
-                                  .toISOString()
-                                  .split("T")[0];
-
-                                setEditedData((prev) =>
-                                  prev
-                                    ? {
-                                        ...prev,
-                                        end_date: formatted,
-                                      }
-                                    : null,
-                                );
-                              }}
-                            />
-                          </View>
-                        </View>
+                        {/* Date fields removed per requirements. Loop over availabilityDetails for days/breaks */}
 
                         {editedData?.availabilityDetails.map((d, index) => (
                           <View key={index} style={styles.editDayCard}>
@@ -423,9 +386,12 @@ export default function Availability() {
                               </Text>
                             </View>
 
+                            {/* Work Times */}
                             <View style={styles.timeRow}>
                               <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Start</Text>
+                                <Text style={styles.inputLabel}>
+                                  Start Time
+                                </Text>
                                 <DateTimePicker
                                   value={parseTimeString(d.start_time)}
                                   mode="time"
@@ -433,16 +399,13 @@ export default function Availability() {
                                   is24Hour={true}
                                   onChange={(e, date) => {
                                     if (!date || !editedData) return;
-
                                     const details = [
                                       ...editedData.availabilityDetails,
                                     ];
-
                                     details[index] = {
                                       ...details[index],
                                       start_time: formatTimeString(date),
                                     };
-
                                     setEditedData({
                                       ...editedData,
                                       availabilityDetails: details,
@@ -452,7 +415,7 @@ export default function Availability() {
                               </View>
 
                               <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>End</Text>
+                                <Text style={styles.inputLabel}>End Time</Text>
                                 <DateTimePicker
                                   value={parseTimeString(d.end_time)}
                                   mode="time"
@@ -460,16 +423,70 @@ export default function Availability() {
                                   is24Hour={true}
                                   onChange={(e, date) => {
                                     if (!date || !editedData) return;
-
                                     const details = [
                                       ...editedData.availabilityDetails,
                                     ];
-
                                     details[index] = {
                                       ...details[index],
                                       end_time: formatTimeString(date),
                                     };
+                                    setEditedData({
+                                      ...editedData,
+                                      availabilityDetails: details,
+                                    });
+                                  }}
+                                />
+                              </View>
+                            </View>
 
+                            {/* Pause / Break Times */}
+                            <View style={[styles.timeRow, { marginTop: 10 }]}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>
+                                  Pause Start
+                                </Text>
+                                <DateTimePicker
+                                  value={parseTimeString(
+                                    d.pause_start || "12:00:00",
+                                  )}
+                                  mode="time"
+                                  display="compact"
+                                  is24Hour={true}
+                                  onChange={(e, date) => {
+                                    if (!date || !editedData) return;
+                                    const details = [
+                                      ...editedData.availabilityDetails,
+                                    ];
+                                    details[index] = {
+                                      ...details[index],
+                                      pause_start: formatTimeString(date),
+                                    };
+                                    setEditedData({
+                                      ...editedData,
+                                      availabilityDetails: details,
+                                    });
+                                  }}
+                                />
+                              </View>
+
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.inputLabel}>Pause End</Text>
+                                <DateTimePicker
+                                  value={parseTimeString(
+                                    d.pause_end || "13:00:00",
+                                  )}
+                                  mode="time"
+                                  display="compact"
+                                  is24Hour={true}
+                                  onChange={(e, date) => {
+                                    if (!date || !editedData) return;
+                                    const details = [
+                                      ...editedData.availabilityDetails,
+                                    ];
+                                    details[index] = {
+                                      ...details[index],
+                                      pause_end: formatTimeString(date),
+                                    };
                                     setEditedData({
                                       ...editedData,
                                       availabilityDetails: details,

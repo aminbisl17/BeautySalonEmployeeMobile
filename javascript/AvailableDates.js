@@ -58,3 +58,35 @@ export async function getAvailability() {
     throw new Error(errorMessage);
   }
 }
+
+export async function updateDates(dates, id) {
+  const API_EMPLOYEE_UPDATE_AVAILABLE_DATES =
+    Constants.expoConfig?.extra?.API_EMPLOYEE_UPDATE_AVAILABLE_DATES;
+
+  if (!API_EMPLOYEE_UPDATE_AVAILABLE_DATES) {
+    throw new Error("Missing API_EMPLOYEE_UPDATE_AVAILABLE_DATES");
+  }
+
+  const token = await SecureStore.getItemAsync("accessToken");
+
+  try {
+    const res = await axios.patch(
+      API_EMPLOYEE_UPDATE_AVAILABLE_DATES + id,
+      dates, // <-- JSON body
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return res.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+
+    Alert.alert("Error", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
