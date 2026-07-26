@@ -17,6 +17,7 @@ import {
   updateDates,
 } from "@/javascript/AvailableDates";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 // --- Types & Interfaces ---
 interface AvailabilityDetail {
@@ -108,6 +109,7 @@ export default function Availability() {
   const [availability, setAvailability] = useState<AvailabilityItem[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const router = useRouter();
   const [expandedSavedCard, setExpandedSavedCard] = useState<number | null>(
     null,
   );
@@ -323,7 +325,16 @@ export default function Availability() {
         />
       }
     >
-      <Text style={styles.title}>Availability</Text>
+      <View style={styles.header}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.push("/Home")}
+        >
+          <Ionicons name="arrow-back" size={22} color="#4F46E5" />
+        </Pressable>
+
+        <Text style={styles.title}>Availability</Text>
+      </View>
 
       {/* CURRENT AVAILABILITY */}
       <View style={styles.section}>
@@ -1169,5 +1180,31 @@ const styles = StyleSheet.create({
     color: "#EF4444",
     fontWeight: "600",
     fontSize: 14,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  title: {
+    fontSize: 30,
+    fontWeight: "700",
+    color: "#0F172A",
+    letterSpacing: -0.6,
+    marginBottom: 0,
   },
 });
