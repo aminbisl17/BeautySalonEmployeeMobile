@@ -122,7 +122,7 @@ export default function LoginView() {
 
       setIsSubmitting(false);
       router.replace("/Home");
-    } catch (err) {
+    } catch (err: any) {
       clearTimeout(timeout);
       setIsSubmitting(false);
 
@@ -135,10 +135,14 @@ export default function LoginView() {
     }
   };
 
-  const showOverlay = isVerifyingSession || isSubmitting;
-  const overlayMessage = isVerifyingSession
-    ? "Po verifikohet sesioni..."
-    : "Po kyçeni...";
+  if (isVerifyingSession) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Po verifikohet sesioni...</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
@@ -148,17 +152,20 @@ export default function LoginView() {
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerZone}>
-          <Text style={styles.brandTitle}>GLOW & CO.</Text>
-          <Text style={styles.brandSubtitle}>Staff Portal Login</Text>
+          <Text style={styles.brandTitle}>BeautySalon</Text>
+          <Text style={styles.brandSubtitle}>Portali i Stafit</Text>
         </View>
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Kyçuni në llogari</Text>
+
           <TextInput
             style={[styles.input, userFocused && styles.inputFocused]}
-            placeholder="Username"
-            placeholderTextColor="#A0A0A0"
+            placeholder="Përdoruesi"
+            placeholderTextColor="#94A3B8"
             value={username}
             onChangeText={setUsername}
             onFocus={() => setUserFocused(true)}
@@ -169,8 +176,8 @@ export default function LoginView() {
 
           <TextInput
             style={[styles.input, passFocused && styles.inputFocused]}
-            placeholder="Password"
-            placeholderTextColor="#A0A0A0"
+            placeholder="Fjalëkalimi"
+            placeholderTextColor="#94A3B8"
             secureTextEntry
             value={password}
             onChangeText={setPassword}
@@ -187,9 +194,9 @@ export default function LoginView() {
             activeOpacity={0.8}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#FFF" />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
+              <Text style={styles.buttonText}>Kyçuni</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -201,83 +208,86 @@ export default function LoginView() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2", // Clean, elegant cream background
+    backgroundColor: "#F8FAFC",
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 30,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
-    color: "#7A7065",
-    letterSpacing: 0.5,
+    fontSize: 15,
+    color: "#64748B",
+    fontWeight: "500",
   },
   headerZone: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   brandTitle: {
-    fontSize: 32,
-    fontWeight: "300",
-    color: "#2C2520", // Deep sophisticated charcoal/brown
-    letterSpacing: 4,
+    fontSize: 30,
+    fontWeight: "700",
+    color: "#0F172A",
+    letterSpacing: 3,
     textAlign: "center",
   },
   brandSubtitle: {
     fontSize: 13,
-    fontWeight: "500",
-    color: "#D4A373", // Elegant Muted Rose-gold/Champagne accent
+    fontWeight: "600",
+    color: "#4F46E5",
     textTransform: "uppercase",
-    letterSpacing: 2,
+    letterSpacing: 1.5,
     marginTop: 6,
     textAlign: "center",
   },
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 28,
-    // Soft premium shadow profile
-    shadowColor: "#2C2520",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 4,
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#0F172A",
+    marginBottom: 20,
+    textAlign: "center",
   },
   input: {
-    height: 54,
+    height: 50,
     borderWidth: 1,
-    borderColor: "#EAE5DF",
-    borderRadius: 14,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
     paddingHorizontal: 16,
     marginBottom: 16,
-    backgroundColor: "#FCFBF9",
+    backgroundColor: "#FFFFFF",
     fontSize: 15,
-    color: "#2C2520",
+    color: "#0F172A",
   },
   inputFocused: {
-    borderColor: "#D4A373", // Smooth tint on selection
-    backgroundColor: "#FFFFFF",
+    borderColor: "#4F46E5",
   },
   button: {
-    backgroundColor: "#2C2520", // Solid striking premium dark button
-    height: 54,
-    borderRadius: 14,
+    backgroundColor: "#4F46E5",
+    height: 50,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
-    shadowColor: "#2C2520",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 2,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -286,6 +296,5 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 16,
-    letterSpacing: 0.5,
   },
 });

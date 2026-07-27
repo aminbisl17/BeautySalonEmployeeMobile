@@ -14,7 +14,7 @@ import {
 } from "react-native";
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,7 +57,7 @@ export default function Profile() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Loading profile…</Text>
+        <Text style={styles.loadingText}>Po ngarkohet profili...</Text>
       </View>
     );
   }
@@ -76,8 +76,8 @@ export default function Profile() {
         />
       }
     >
-      {/* Header Profile Section */}
-      <View style={styles.header}>
+      {/* User Avatar & Name Section */}
+      <View style={styles.profileHeaderCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
             {user?.emri?.[0]}
@@ -92,62 +92,70 @@ export default function Profile() {
         <Text style={styles.username}>@{user?.username}</Text>
       </View>
 
-      {/* User Information Grouped Card */}
-      <Text style={styles.sectionTitle}>Account Details</Text>
-      <View style={styles.group}>
-        <View style={styles.row}>
-          <View style={styles.rowLeft}>
-            <Ionicons
-              name="mail-outline"
-              size={18}
-              color="#64748B"
-              style={styles.icon}
-            />
-            <View>
-              <Text style={styles.label}>Email Address</Text>
-              <Text style={styles.value}>{user?.email}</Text>
+      {/* Account Details Group */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Të Dëshirat e Llogarisë</Text>
+
+        <View style={styles.groupCard}>
+          {/* Email Row */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="mail-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View>
+                <Text style={styles.label}>Adresa e Email-it</Text>
+                <Text style={styles.value}>
+                  {user?.email || "E papërcaktuar"}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.separator} />
+          <View style={styles.separator} />
 
-        <View style={styles.row}>
-          <View style={styles.rowLeft}>
-            <Ionicons
-              name="call-outline"
-              size={18}
-              color="#64748B"
-              style={styles.icon}
-            />
-            <View>
-              <Text style={styles.label}>Phone Number</Text>
-              <Text style={styles.value}>
-                {user?.numri_telefonit || "Not Provided"}
-              </Text>
+          {/* Phone Number Row */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="call-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View>
+                <Text style={styles.label}>Numri i Telefonit</Text>
+                <Text style={styles.value}>
+                  {user?.numri_telefonit || "Nuk është dhënë"}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.separator} />
+          <View style={styles.separator} />
 
-        <View style={styles.row}>
-          <View style={styles.rowLeft}>
-            <Ionicons
-              name="at-outline"
-              size={18}
-              color="#64748B"
-              style={styles.icon}
-            />
-            <View>
-              <Text style={styles.label}>Username</Text>
-              <Text style={styles.value}>@{user?.username}</Text>
+          {/* Username Row */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="at-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View>
+                <Text style={styles.label}>Emri i Përdoruesit</Text>
+                <Text style={styles.value}>@{user?.username}</Text>
+              </View>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Logout Action Area */}
+      {/* Logout Button */}
       <TouchableOpacity
         onPress={handleLogout}
         activeOpacity={0.8}
@@ -159,7 +167,7 @@ export default function Profile() {
           color="#EF4444"
           style={{ marginRight: 6 }}
         />
-        <Text style={styles.logoutText}>Log Out</Text>
+        <Text style={styles.logoutText}>Dil nga Llogaria</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -171,8 +179,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
   },
   contentContainer: {
+    padding: 16,
     paddingBottom: 40,
-    paddingTop: 24,
   },
   center: {
     flex: 1,
@@ -186,71 +194,93 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
   },
-  header: {
+
+  /* Navigation Header */
+  navigationHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 20,
-    marginBottom: 32,
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: "#EEF2FF",
+  },
+  navigationTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+
+  /* Profile Avatar Header */
+  profileHeaderCard: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
   avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: "#4F46E5",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: "#4F46E5",
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 3,
   },
   avatarText: {
     color: "#FFFFFF",
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "600",
     letterSpacing: 0.5,
   },
   name: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "700",
     color: "#0F172A",
-    letterSpacing: -0.5,
   },
   username: {
     fontSize: 14,
     color: "#64748B",
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: "500",
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#64748B",
-    marginBottom: 10,
-    marginHorizontal: 20,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
+
+  /* Card Sections */
+  section: {
+    marginBottom: 20,
   },
-  group: {
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  groupCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    overflow: "hidden",
-    marginHorizontal: 20,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    overflow: "hidden",
   },
   row: {
     paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "between",
+    justifyContent: "space-between",
   },
   rowLeft: {
     flexDirection: "row",
@@ -259,42 +289,41 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: 14,
-    marginTop: 2,
   },
   label: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: "#64748B",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   value: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#0F172A",
     fontWeight: "500",
   },
   separator: {
     height: 1,
     backgroundColor: "#F1F5F9",
-    marginLeft: 48, // Aligns cleanly past the icon edge
+    marginLeft: 48,
   },
+
+  /* Action Buttons */
   logoutButton: {
-    marginTop: 24,
-    marginHorizontal: 20,
     backgroundColor: "#FEF2F2",
-    borderRadius: 14,
+    borderRadius: 10,
     paddingVertical: 14,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#FEE2E2",
+    marginTop: 8,
   },
   logoutText: {
     color: "#EF4444",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    letterSpacing: 0.3,
   },
 });

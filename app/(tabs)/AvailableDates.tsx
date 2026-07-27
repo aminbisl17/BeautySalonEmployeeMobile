@@ -45,25 +45,26 @@ interface DaySetup {
   pause_start: string;
   pause_end: string;
 }
+
 // --- Constants & Static Helpers ---
 const WEEK_DAYS = [
-  { id: 1, name: "Monday" },
-  { id: 2, name: "Tuesday" },
-  { id: 3, name: "Wednesday" },
-  { id: 4, name: "Thursday" },
-  { id: 5, name: "Friday" },
-  { id: 6, name: "Saturday" },
-  { id: 7, name: "Sunday" },
+  { id: 1, name: "E Hënë" },
+  { id: 2, name: "E Martë" },
+  { id: 3, name: "E Mërkurë" },
+  { id: 4, name: "E Enjte" },
+  { id: 5, name: "E Premte" },
+  { id: 6, name: "E Shtunë" },
+  { id: 7, name: "E Diel" },
 ];
 
 const DAY_NAMES: Record<number, string> = {
-  1: "Monday",
-  2: "Tuesday",
-  3: "Wednesday",
-  4: "Thursday",
-  5: "Friday",
-  6: "Saturday",
-  7: "Sunday",
+  1: "E Hënë",
+  2: "E Martë",
+  3: "E Mërkurë",
+  4: "E Enjte",
+  5: "E Premte",
+  6: "E Shtunë",
+  7: "E Diel",
 };
 
 const formatTimeString = (date: Date) => date.toTimeString().slice(0, 5);
@@ -166,8 +167,6 @@ export default function Availability() {
     loadAvailability();
   }, []);
 
-  // Custom Memo Hook for handling calendar highlights if used in component
-
   const loadAvailability = async () => {
     try {
       const data = await getAvailability();
@@ -214,7 +213,7 @@ export default function Availability() {
 
     try {
       const message = await setAvailableDates(data);
-      Alert.alert("Success", message);
+      Alert.alert("Sukses", message);
       setShowSetupForm(false);
       await loadAvailability();
     } catch (error) {
@@ -226,14 +225,14 @@ export default function Availability() {
     setEditingAvailability(item.id_availability);
 
     setEditedData({
-      start_date: item.start_date, // Kept in payload structure if required by API schema, but not editable
-      end_date: item.end_date, // Kept in payload structure if required by API schema, but not editable
+      start_date: item.start_date,
+      end_date: item.end_date,
       availabilityDetails: item.availabilityDetails.map((d) => ({
         day_of_week: d.day_of_week,
         start_time: d.start_time,
         end_time: d.end_time,
-        pause_start: d.pause_start || "12:00:00", // Fallback default if empty
-        pause_end: d.pause_end || "13:00:00", // Fallback default if empty
+        pause_start: d.pause_start || "12:00:00",
+        pause_end: d.pause_end || "13:00:00",
       })),
     });
   };
@@ -242,40 +241,34 @@ export default function Availability() {
     if (!editedData || !editingAvailability) return;
 
     try {
-      // 1. Send the updated payload
-      const updatedRecord = await updateDates(editedData, editingAvailability);
+      await updateDates(editedData, editingAvailability);
 
-      // 2. Option A: Update local state immediately using functional state update
       setAvailability((prevList) =>
         prevList.map((item) =>
           item.id_availability === editingAvailability
-            ? { ...item, ...editedData } // or updatedRecord if backend returns updated object
+            ? { ...item, ...editedData }
             : item,
         ),
       );
 
-      //console.log(editingAvailability);
-      //console.log(editedData);
-      //console.log(updatedRecord);
-      // Close edit mode
       setEditingAvailability(null);
       setEditedData(null);
-
-      // 3. Option B: Refetch fresh data from API
-      // await loadAvailability();
     } catch (error) {
-      console.error("Error saving availability updates:", error);
+      console.error(
+        "Gabim gjatë ruajtjes së përditësimeve të disponueshmërisë:",
+        error,
+      );
     }
   };
 
   const deleteAvailability = async (id: number) => {
     Alert.alert(
-      "Delete Availability",
-      "Are you sure you want to delete this schedule?",
+      "Fshi Disponueshmërinë",
+      "A jeni i sigurt që dëshironi ta fshini këtë orar?",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "Anulo", style: "cancel" },
         {
-          text: "Delete",
+          text: "Fshi",
           style: "destructive",
           onPress: async () => {
             try {
@@ -292,32 +285,26 @@ export default function Availability() {
     );
   };
 
-  const formatDateAlbanian = (dateString) => {
+  const formatDateAlbanian = (dateString: string) => {
     if (!dateString) return "";
     const date = new Date(dateString);
 
-    // Checks if the date is valid
     if (isNaN(date.getTime())) return dateString;
 
-    // Formats as "15 Qershor 2026"
     return date.toLocaleDateString("sq-AL", {
       day: "numeric",
       month: "long",
       year: "numeric",
     });
   };
-  // Helper to strip time and normalize to local midnight
 
-  // -------------------------------------------------------------
   // 1. START DATE ONCHANGE
-  // -------------------------------------------------------------
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     if (!selectedDate) return;
 
     const cleanStartDate = normalizeToMidnight(selectedDate);
     const targetEndDate = cleanStartDate > endDate ? cleanStartDate : endDate;
 
-    // Check for conflicts
     let hasConflict = false;
     const current = new Date(cleanStartDate.getTime());
 
@@ -331,8 +318,8 @@ export default function Availability() {
 
     if (hasConflict) {
       Alert.alert(
-        "Unavailable Range",
-        "The selected range contains dates that are already occupied.",
+        "Lodhje e padisponueshme",
+        "Lodhja e përzgjedhur përmban data që janë tashmë të zëna.",
       );
       return;
     }
@@ -343,15 +330,12 @@ export default function Availability() {
     }
   };
 
-  // -------------------------------------------------------------
   // 2. END DATE ONCHANGE
-  // -------------------------------------------------------------
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     if (!selectedDate) return;
 
     const cleanEndDate = normalizeToMidnight(selectedDate);
 
-    // Check for conflicts
     let hasConflict = false;
     const current = new Date(startDate.getTime());
 
@@ -365,8 +349,8 @@ export default function Availability() {
 
     if (hasConflict) {
       Alert.alert(
-        "Unavailable Range",
-        "The selected range contains dates that are already occupied.",
+        "Lodhje e padisponueshme",
+        "Lodhja e përzgjedhur përmban data që janë tashmë të zëna.",
       );
       return;
     }
@@ -396,15 +380,15 @@ export default function Availability() {
           <Ionicons name="arrow-back" size={22} color="#4F46E5" />
         </Pressable>
 
-        <Text style={styles.title}>Availability</Text>
+        <Text style={styles.title}>Disponueshmëria</Text>
       </View>
 
       {/* CURRENT AVAILABILITY */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Current Availability</Text>
+        <Text style={styles.sectionTitle}>Disponueshmëria Aktuale</Text>
 
         {loadingAvailability ? (
-          <Text style={styles.loading}>Loading configurations...</Text>
+          <Text style={styles.loading}>Po ngarkohen konfigurimet...</Text>
         ) : (
           availability.map((item) => {
             const isSavedCardExpanded =
@@ -450,10 +434,7 @@ export default function Availability() {
                   {isSavedCardExpanded &&
                     (isEditing ? (
                       <View style={styles.editContainer}>
-                        {/* Date fields removed per requirements. Loop over availabilityDetails for days/breaks */}
-
                         {editedData?.availabilityDetails.map((d, index) => {
-                          // Convert current selected string values into Date objects for picker boundaries
                           const workStart = parseTimeString(d.start_time);
                           const workEnd = parseTimeString(d.end_time);
                           const pauseStart = parseTimeString(
@@ -476,14 +457,13 @@ export default function Availability() {
                               <View style={styles.timeRow}>
                                 <View style={{ flex: 1 }}>
                                   <Text style={styles.inputLabel}>
-                                    Start Time
+                                    Ora e Fillimit
                                   </Text>
                                   <DateTimePicker
                                     value={workStart}
                                     mode="time"
                                     display="compact"
                                     is24Hour={true}
-                                    // Start time cannot exceed End time
                                     maximumDate={workEnd}
                                     onChange={(e, date) => {
                                       if (!date || !editedData) return;
@@ -504,14 +484,13 @@ export default function Availability() {
 
                                 <View style={{ flex: 1 }}>
                                   <Text style={styles.inputLabel}>
-                                    End Time
+                                    Ora e Përfundimit
                                   </Text>
                                   <DateTimePicker
                                     value={workEnd}
                                     mode="time"
                                     display="compact"
                                     is24Hour={true}
-                                    // End time cannot be earlier than Start time
                                     minimumDate={workStart}
                                     onChange={(e, date) => {
                                       if (!date || !editedData) return;
@@ -535,14 +514,13 @@ export default function Availability() {
                               <View style={[styles.timeRow, { marginTop: 10 }]}>
                                 <View style={{ flex: 1 }}>
                                   <Text style={styles.inputLabel}>
-                                    Pause Start
+                                    Fillimi i Pushimit
                                   </Text>
                                   <DateTimePicker
                                     value={pauseStart}
                                     mode="time"
                                     display="compact"
                                     is24Hour={true}
-                                    // Must be after work start, but before pause end
                                     minimumDate={workStart}
                                     maximumDate={pauseEnd}
                                     onChange={(e, date) => {
@@ -564,14 +542,13 @@ export default function Availability() {
 
                                 <View style={{ flex: 1 }}>
                                   <Text style={styles.inputLabel}>
-                                    Pause End
+                                    Përfundimi i Pushimit
                                   </Text>
                                   <DateTimePicker
                                     value={pauseEnd}
                                     mode="time"
                                     display="compact"
                                     is24Hour={true}
-                                    // Must be after pause start, but before work end
                                     minimumDate={pauseStart}
                                     maximumDate={workEnd}
                                     onChange={(e, date) => {
@@ -603,7 +580,7 @@ export default function Availability() {
                               setEditedData(null);
                             }}
                           >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                            <Text style={styles.cancelButtonText}>Anulo</Text>
                           </Pressable>
 
                           <Pressable
@@ -611,7 +588,7 @@ export default function Availability() {
                             onPress={saveAvailability}
                           >
                             <Text style={styles.saveButtonText}>
-                              Save Updates
+                              Ruaj Përditësimet
                             </Text>
                           </Pressable>
                         </View>
@@ -634,7 +611,7 @@ export default function Availability() {
 
                               {d.pause_start && d.pause_end && (
                                 <Text style={styles.breakText}>
-                                  Break: {d.pause_start.slice(0, 5)} -{" "}
+                                  Pushimi: {d.pause_start.slice(0, 5)} -{" "}
                                   {d.pause_end.slice(0, 5)}
                                 </Text>
                               )}
@@ -653,7 +630,7 @@ export default function Availability() {
                               color="#4F46E5"
                               style={{ marginRight: 4 }}
                             />
-                            <Text style={styles.editButtonText}>Edit</Text>
+                            <Text style={styles.editButtonText}>Ndrysho</Text>
                           </Pressable>
 
                           <Pressable
@@ -668,7 +645,7 @@ export default function Availability() {
                               color="#EF4444"
                               style={{ marginRight: 4 }}
                             />
-                            <Text style={styles.deleteButtonText}>Delete</Text>
+                            <Text style={styles.deleteButtonText}>Fshi</Text>
                           </Pressable>
                         </View>
                       </>
@@ -690,9 +667,11 @@ export default function Availability() {
           onPress={() => setShowSetupForm(!showSetupForm)}
         >
           <View>
-            <Text style={styles.setupToggleTitle}>Set New Availability</Text>
+            <Text style={styles.setupToggleTitle}>
+              Vendos Disponueshmëri të Re
+            </Text>
             <Text style={styles.setupToggleSubtitle}>
-              Define your dates, active days, and times
+              Përcaktoni datat, ditët aktive dhe oraret
             </Text>
           </View>
           <Ionicons
@@ -705,16 +684,18 @@ export default function Availability() {
         {showSetupForm && (
           <View style={styles.formContainer}>
             {/* DATE RANGE */}
-            <Text style={styles.innerSectionTitle}>Select Date Range</Text>
+            <Text style={styles.innerSectionTitle}>
+              Zgjidh Periudhën e Datave
+            </Text>
             <View style={styles.cardGroup}>
               {/* START DATE */}
               <View style={styles.cellRow}>
-                <Text style={styles.cellLabel}>Start Date</Text>
+                <Text style={styles.cellLabel}>Data e Fillimit</Text>
                 <DateTimePicker
                   value={startDate}
                   mode="date"
                   display="compact"
-                  minimumDate={normalizeToMidnight(new Date())} // Cannot pick past dates
+                  minimumDate={normalizeToMidnight(new Date())}
                   onChange={handleStartDateChange}
                 />
               </View>
@@ -723,12 +704,12 @@ export default function Availability() {
 
               {/* END DATE */}
               <View style={styles.cellRow}>
-                <Text style={styles.cellLabel}>End Date</Text>
+                <Text style={styles.cellLabel}>Data e Përfundimit</Text>
                 <DateTimePicker
                   value={endDate}
                   mode="date"
                   display="compact"
-                  minimumDate={startDate} // End date cannot be earlier than start date
+                  minimumDate={startDate}
                   onChange={handleEndDateChange}
                 />
               </View>
@@ -736,14 +717,13 @@ export default function Availability() {
 
             {/* WORKING DAYS */}
             <Text style={[styles.innerSectionTitle, { marginTop: 24 }]}>
-              Working Days Setup
+              Konfigurimi i Ditëve të Punës
             </Text>
             {days
               .filter((day) => availableDays.includes(day.id))
               .map((day) => {
                 const isExpanded = expanded === day.id;
 
-                // Convert string times into Date objects for picker boundaries
                 const workStart = parseTimeString(day.start_time);
                 const workEnd = parseTimeString(day.end_time);
                 const pauseStart = parseTimeString(
@@ -775,7 +755,7 @@ export default function Availability() {
                           <Text style={styles.statusSubtitle}>
                             {day.enabled
                               ? `${day.start_time} - ${day.end_time}`
-                              : "Closed / Unavailable"}
+                              : "Mbyllur / E Padisponueshme"}
                           </Text>
                         </View>
 
@@ -798,16 +778,15 @@ export default function Availability() {
 
                       {isExpanded && day.enabled && (
                         <View style={styles.dayContent}>
-                          <Text style={styles.groupLabel}>Working Hours</Text>
+                          <Text style={styles.groupLabel}>Oraret e Punës</Text>
                           <View style={styles.timeRow}>
                             <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>Starts</Text>
+                              <Text style={styles.timeLabel}>Fillon</Text>
                               <DateTimePicker
                                 value={workStart}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
-                                // Start time cannot exceed End time
                                 maximumDate={workEnd}
                                 onChange={(e, date) =>
                                   date &&
@@ -820,13 +799,12 @@ export default function Availability() {
                               />
                             </View>
                             <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>Ends</Text>
+                              <Text style={styles.timeLabel}>Përfundon</Text>
                               <DateTimePicker
                                 value={workEnd}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
-                                // End time cannot be earlier than Start time
                                 minimumDate={workStart}
                                 onChange={(e, date) =>
                                   date &&
@@ -841,17 +819,16 @@ export default function Availability() {
                           </View>
 
                           <Text style={[styles.groupLabel, { marginTop: 18 }]}>
-                            Break Duration
+                            Kohëzgjatja e Pushimit
                           </Text>
                           <View style={styles.timeRow}>
                             <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>From</Text>
+                              <Text style={styles.timeLabel}>Nga</Text>
                               <DateTimePicker
                                 value={pauseStart}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
-                                // Must be after work start, but before pause end
                                 minimumDate={workStart}
                                 maximumDate={pauseEnd}
                                 onChange={(e, date) =>
@@ -865,13 +842,12 @@ export default function Availability() {
                               />
                             </View>
                             <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>To</Text>
+                              <Text style={styles.timeLabel}>Deri</Text>
                               <DateTimePicker
                                 value={pauseEnd}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
-                                // Must be after pause start, but before work end
                                 minimumDate={pauseStart}
                                 maximumDate={workEnd}
                                 onChange={(e, date) =>
@@ -892,8 +868,8 @@ export default function Availability() {
                 );
               })}
 
-            <Pressable style={styles.button} onPress={setDates}>
-              <Text style={styles.buttonText}>Save Availability</Text>
+            <Pressable style={styles.submitButton} onPress={setDates}>
+              <Text style={styles.submitButtonText}>Ruaj Disponueshmërinë</Text>
             </Pressable>
           </View>
         )}
@@ -902,6 +878,7 @@ export default function Availability() {
   );
 }
 
+/*
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1283,5 +1260,308 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     letterSpacing: -0.6,
     marginBottom: 0,
+  },
+});
+*/
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: "#EEF2FF",
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  innerSectionTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 8,
+  },
+  loading: {
+    color: "#64748B",
+    fontStyle: "italic",
+  },
+  cardGroupOuter: {
+    marginBottom: 10,
+  },
+  currentCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cardActiveShadow: {
+    borderColor: "#C7D2FE",
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  currentHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  currentDateRange: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E293B",
+  },
+  editContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  editDayCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+  },
+  dayTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 12,
+    color: "#64748B",
+    marginBottom: 4,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 12,
+  },
+  cancelButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    backgroundColor: "#F1F5F9",
+  },
+  cancelButtonText: {
+    color: "#475569",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  saveButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 6,
+    backgroundColor: "#4F46E5",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  currentDetailItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F8FAFC",
+  },
+  detailBadge: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#4F46E5",
+    marginTop: 6,
+    marginRight: 8,
+  },
+  dayNameActive: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  detailTimeText: {
+    fontSize: 13,
+    color: "#334155",
+    marginTop: 2,
+  },
+  breakText: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  actionButtons: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    gap: 12,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  editButtonText: {
+    color: "#4F46E5",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: "#EF4444",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  setupToggleFormButton: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  setupToggleFormButtonActive: {
+    borderColor: "#818CF8",
+    backgroundColor: "#EEF2FF",
+  },
+  setupToggleTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0F172A",
+  },
+  setupToggleSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  formContainer: {
+    marginTop: 16,
+  },
+  cardGroup: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    overflow: "hidden",
+  },
+  cardActiveBorder: {
+    borderColor: "#818CF8",
+  },
+  cellRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+  },
+  cellLabel: {
+    fontSize: 14,
+    color: "#334155",
+    fontWeight: "500",
+  },
+  separator: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  dayName: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#64748B",
+  },
+  statusSubtitle: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 2,
+  },
+  dayContent: {
+    padding: 12,
+    backgroundColor: "#F8FAFC",
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  groupLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#475569",
+    textTransform: "uppercase",
+    marginBottom: 6,
+  },
+  timeRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  timeCell: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  timeLabel: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  submitButton: {
+    backgroundColor: "#4F46E5",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  submitButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 15,
   },
 });
