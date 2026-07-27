@@ -90,3 +90,31 @@ export async function updateDates(dates, id) {
     throw new Error(errorMessage);
   }
 }
+
+export async function deleteDate(id) {
+  const API_EMPLOYEE_DELETE_AVAILABLE_DATES =
+    Constants.expoConfig?.extra?.API_EMPLOYEE_DELETE_AVAILABLE_DATES;
+  if (!API_EMPLOYEE_DELETE_AVAILABLE_DATES) {
+    throw new Error("Missing API_EMPLOYEE_UPDATE_AVAILABLE_DATES");
+  }
+  const token = await SecureStore.getItemAsync("accessToken");
+
+  console.log(API_EMPLOYEE_DELETE_AVAILABLE_DATES + id);
+
+  try {
+    const res = await axios.delete(API_EMPLOYEE_DELETE_AVAILABLE_DATES + id, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+
+    Alert.alert("Error", errorMessage);
+    throw new Error(errorMessage);
+  }
+}

@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 
 import {
+  deleteDate,
   getAvailability,
   setAvailableDates,
   updateDates,
@@ -67,6 +68,12 @@ const DAY_NAMES: Record<number, string> = {
 
 const formatTimeString = (date: Date) => date.toTimeString().slice(0, 5);
 
+const normalizeToMidnight = (d: Date): Date => {
+  const clean = new Date(d);
+  clean.setHours(0, 0, 0, 0);
+  return clean;
+};
+
 const parseTimeString = (timeStr: string) => {
   const [hours, minutes] = timeStr.split(":").map(Number);
   const d = new Date();
@@ -114,7 +121,6 @@ export default function Availability() {
     null,
   );
   const [refreshing, setRefreshing] = useState(false);
-
   const [showSetupForm, setShowSetupForm] = useState(false);
   const [editingAvailability, setEditingAvailability] = useState<number | null>(
     null,
@@ -124,12 +130,15 @@ export default function Availability() {
     "id_availability"
   > | null>(null);
 
-  const [editStartDate, setEditStartDate] = useState(new Date());
-  const [editEndDate, setEditEndDate] = useState(new Date());
-  const [startDate, setStartDate] = useState<Date>(new Date());
-  const [endDate, setEndDate] = useState<Date>(
-    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+  const [startDate, setStartDate] = useState<Date>(() =>
+    normalizeToMidnight(new Date()),
   );
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return normalizeToMidnight(d);
+  });
+
   const [availableDays, setAvailableDays] = useState<number[]>([]);
 
   const handleRefresh = useCallback(async () => {
@@ -157,33 +166,7 @@ export default function Availability() {
     loadAvailability();
   }, []);
 
-  // Custom Memo Hook for handling calendar highlights if used in components
-  const markedDates = useMemo(() => {
-    const marked: Record<string, any> = {};
-
-    availability.forEach((item) => {
-      const start = parseDateOnlyString(item.start_date);
-      const end = parseDateOnlyString(item.end_date);
-      let current = new Date(start);
-
-      while (current <= end) {
-        const dateStr = formatDateString(current);
-
-        marked[dateStr] = {
-          disabled: true,
-          disableTouchEvent: true,
-          color: "#fee2e2",
-          textColor: "#ef4444",
-          startingDay: dateStr === item.start_date,
-          endingDay: dateStr === item.end_date,
-        };
-
-        current.setDate(current.getDate() + 1);
-      }
-    });
-
-    return marked;
-  }, [availability]);
+  // Custom Memo Hook for handling calendar highlights if used in component
 
   const loadAvailability = async () => {
     try {
@@ -271,9 +254,9 @@ export default function Availability() {
         ),
       );
 
-      console.log(editingAvailability);
-      console.log(editedData);
-      console.log(updatedRecord);
+      //console.log(editingAvailability);
+      //console.log(editedData);
+      //console.log(updatedRecord);
       // Close edit mode
       setEditingAvailability(null);
       setEditedData(null);
@@ -296,9 +279,7 @@ export default function Availability() {
           style: "destructive",
           onPress: async () => {
             try {
-              await fetch(`YOUR_API_URL/availability/${id}`, {
-                method: "DELETE",
-              });
+              await deleteDate(id);
               setAvailability((prev) =>
                 prev.filter((item) => item.id_availability !== id),
               );
@@ -309,6 +290,88 @@ export default function Availability() {
         },
       ],
     );
+  };
+
+  const formatDateAlbanian = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+
+    // Checks if the date is valid
+    if (isNaN(date.getTime())) return dateString;
+
+    // Formats as "15 Qershor 2026"
+    return date.toLocaleDateString("sq-AL", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+  // Helper to strip time and normalize to local midnight
+
+  // -------------------------------------------------------------
+  // 1. START DATE ONCHANGE
+  // -------------------------------------------------------------
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    if (!selectedDate) return;
+
+    const cleanStartDate = normalizeToMidnight(selectedDate);
+    const targetEndDate = cleanStartDate > endDate ? cleanStartDate : endDate;
+
+    // Check for conflicts
+    let hasConflict = false;
+    const current = new Date(cleanStartDate.getTime());
+
+    while (current <= targetEndDate) {
+      if (isDateOccupied(current, availability)) {
+        hasConflict = true;
+        break;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    if (hasConflict) {
+      Alert.alert(
+        "Unavailable Range",
+        "The selected range contains dates that are already occupied.",
+      );
+      return;
+    }
+
+    setStartDate(cleanStartDate);
+    if (cleanStartDate > endDate) {
+      setEndDate(cleanStartDate);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // 2. END DATE ONCHANGE
+  // -------------------------------------------------------------
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    if (!selectedDate) return;
+
+    const cleanEndDate = normalizeToMidnight(selectedDate);
+
+    // Check for conflicts
+    let hasConflict = false;
+    const current = new Date(startDate.getTime());
+
+    while (current <= cleanEndDate) {
+      if (isDateOccupied(current, availability)) {
+        hasConflict = true;
+        break;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+
+    if (hasConflict) {
+      Alert.alert(
+        "Unavailable Range",
+        "The selected range contains dates that are already occupied.",
+      );
+      return;
+    }
+
+    setEndDate(cleanEndDate);
   };
 
   return (
@@ -372,7 +435,8 @@ export default function Availability() {
                         style={{ marginRight: 8 }}
                       />
                       <Text style={styles.currentDateRange}>
-                        {item.start_date} → {item.end_date}
+                        {formatDateAlbanian(item.start_date)} →{" "}
+                        {formatDateAlbanian(item.end_date)}
                       </Text>
                     </View>
 
@@ -388,126 +452,148 @@ export default function Availability() {
                       <View style={styles.editContainer}>
                         {/* Date fields removed per requirements. Loop over availabilityDetails for days/breaks */}
 
-                        {editedData?.availabilityDetails.map((d, index) => (
-                          <View key={index} style={styles.editDayCard}>
-                            <View style={styles.dayTitleRow}>
-                              <View style={styles.detailBadge} />
-                              <Text style={styles.dayNameActive}>
-                                {DAY_NAMES[d.day_of_week]}
-                              </Text>
-                            </View>
+                        {editedData?.availabilityDetails.map((d, index) => {
+                          // Convert current selected string values into Date objects for picker boundaries
+                          const workStart = parseTimeString(d.start_time);
+                          const workEnd = parseTimeString(d.end_time);
+                          const pauseStart = parseTimeString(
+                            d.pause_start || "12:00:00",
+                          );
+                          const pauseEnd = parseTimeString(
+                            d.pause_end || "13:00:00",
+                          );
 
-                            {/* Work Times */}
-                            <View style={styles.timeRow}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>
-                                  Start Time
+                          return (
+                            <View key={index} style={styles.editDayCard}>
+                              <View style={styles.dayTitleRow}>
+                                <View style={styles.detailBadge} />
+                                <Text style={styles.dayNameActive}>
+                                  {DAY_NAMES[d.day_of_week]}
                                 </Text>
-                                <DateTimePicker
-                                  value={parseTimeString(d.start_time)}
-                                  mode="time"
-                                  display="compact"
-                                  is24Hour={true}
-                                  onChange={(e, date) => {
-                                    if (!date || !editedData) return;
-                                    const details = [
-                                      ...editedData.availabilityDetails,
-                                    ];
-                                    details[index] = {
-                                      ...details[index],
-                                      start_time: formatTimeString(date),
-                                    };
-                                    setEditedData({
-                                      ...editedData,
-                                      availabilityDetails: details,
-                                    });
-                                  }}
-                                />
                               </View>
 
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>End Time</Text>
-                                <DateTimePicker
-                                  value={parseTimeString(d.end_time)}
-                                  mode="time"
-                                  display="compact"
-                                  is24Hour={true}
-                                  onChange={(e, date) => {
-                                    if (!date || !editedData) return;
-                                    const details = [
-                                      ...editedData.availabilityDetails,
-                                    ];
-                                    details[index] = {
-                                      ...details[index],
-                                      end_time: formatTimeString(date),
-                                    };
-                                    setEditedData({
-                                      ...editedData,
-                                      availabilityDetails: details,
-                                    });
-                                  }}
-                                />
+                              {/* Work Times */}
+                              <View style={styles.timeRow}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.inputLabel}>
+                                    Start Time
+                                  </Text>
+                                  <DateTimePicker
+                                    value={workStart}
+                                    mode="time"
+                                    display="compact"
+                                    is24Hour={true}
+                                    // Start time cannot exceed End time
+                                    maximumDate={workEnd}
+                                    onChange={(e, date) => {
+                                      if (!date || !editedData) return;
+                                      const details = [
+                                        ...editedData.availabilityDetails,
+                                      ];
+                                      details[index] = {
+                                        ...details[index],
+                                        start_time: formatTimeString(date),
+                                      };
+                                      setEditedData({
+                                        ...editedData,
+                                        availabilityDetails: details,
+                                      });
+                                    }}
+                                  />
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.inputLabel}>
+                                    End Time
+                                  </Text>
+                                  <DateTimePicker
+                                    value={workEnd}
+                                    mode="time"
+                                    display="compact"
+                                    is24Hour={true}
+                                    // End time cannot be earlier than Start time
+                                    minimumDate={workStart}
+                                    onChange={(e, date) => {
+                                      if (!date || !editedData) return;
+                                      const details = [
+                                        ...editedData.availabilityDetails,
+                                      ];
+                                      details[index] = {
+                                        ...details[index],
+                                        end_time: formatTimeString(date),
+                                      };
+                                      setEditedData({
+                                        ...editedData,
+                                        availabilityDetails: details,
+                                      });
+                                    }}
+                                  />
+                                </View>
+                              </View>
+
+                              {/* Pause / Break Times */}
+                              <View style={[styles.timeRow, { marginTop: 10 }]}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.inputLabel}>
+                                    Pause Start
+                                  </Text>
+                                  <DateTimePicker
+                                    value={pauseStart}
+                                    mode="time"
+                                    display="compact"
+                                    is24Hour={true}
+                                    // Must be after work start, but before pause end
+                                    minimumDate={workStart}
+                                    maximumDate={pauseEnd}
+                                    onChange={(e, date) => {
+                                      if (!date || !editedData) return;
+                                      const details = [
+                                        ...editedData.availabilityDetails,
+                                      ];
+                                      details[index] = {
+                                        ...details[index],
+                                        pause_start: formatTimeString(date),
+                                      };
+                                      setEditedData({
+                                        ...editedData,
+                                        availabilityDetails: details,
+                                      });
+                                    }}
+                                  />
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.inputLabel}>
+                                    Pause End
+                                  </Text>
+                                  <DateTimePicker
+                                    value={pauseEnd}
+                                    mode="time"
+                                    display="compact"
+                                    is24Hour={true}
+                                    // Must be after pause start, but before work end
+                                    minimumDate={pauseStart}
+                                    maximumDate={workEnd}
+                                    onChange={(e, date) => {
+                                      if (!date || !editedData) return;
+                                      const details = [
+                                        ...editedData.availabilityDetails,
+                                      ];
+                                      details[index] = {
+                                        ...details[index],
+                                        pause_end: formatTimeString(date),
+                                      };
+                                      setEditedData({
+                                        ...editedData,
+                                        availabilityDetails: details,
+                                      });
+                                    }}
+                                  />
+                                </View>
                               </View>
                             </View>
-
-                            {/* Pause / Break Times */}
-                            <View style={[styles.timeRow, { marginTop: 10 }]}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>
-                                  Pause Start
-                                </Text>
-                                <DateTimePicker
-                                  value={parseTimeString(
-                                    d.pause_start || "12:00:00",
-                                  )}
-                                  mode="time"
-                                  display="compact"
-                                  is24Hour={true}
-                                  onChange={(e, date) => {
-                                    if (!date || !editedData) return;
-                                    const details = [
-                                      ...editedData.availabilityDetails,
-                                    ];
-                                    details[index] = {
-                                      ...details[index],
-                                      pause_start: formatTimeString(date),
-                                    };
-                                    setEditedData({
-                                      ...editedData,
-                                      availabilityDetails: details,
-                                    });
-                                  }}
-                                />
-                              </View>
-
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.inputLabel}>Pause End</Text>
-                                <DateTimePicker
-                                  value={parseTimeString(
-                                    d.pause_end || "13:00:00",
-                                  )}
-                                  mode="time"
-                                  display="compact"
-                                  is24Hour={true}
-                                  onChange={(e, date) => {
-                                    if (!date || !editedData) return;
-                                    const details = [
-                                      ...editedData.availabilityDetails,
-                                    ];
-                                    details[index] = {
-                                      ...details[index],
-                                      pause_end: formatTimeString(date),
-                                    };
-                                    setEditedData({
-                                      ...editedData,
-                                      availabilityDetails: details,
-                                    });
-                                  }}
-                                />
-                              </View>
-                            </View>
-                          </View>
-                        ))}
+                          );
+                        })}
 
                         <View style={styles.buttonRow}>
                           <Pressable
@@ -621,57 +707,29 @@ export default function Availability() {
             {/* DATE RANGE */}
             <Text style={styles.innerSectionTitle}>Select Date Range</Text>
             <View style={styles.cardGroup}>
+              {/* START DATE */}
               <View style={styles.cellRow}>
                 <Text style={styles.cellLabel}>Start Date</Text>
                 <DateTimePicker
                   value={startDate}
                   mode="date"
                   display="compact"
-                  style={styles.compactPicker}
-                  onChange={(e, date) => {
-                    if (!date) return;
-                    if (isDateOccupied(date, availability)) {
-                      Alert.alert(
-                        "Date Occupied",
-                        "This date falls inside an already configured schedule range.",
-                      );
-                      return;
-                    }
-                    setStartDate(date);
-                  }}
+                  minimumDate={normalizeToMidnight(new Date())} // Cannot pick past dates
+                  onChange={handleStartDateChange}
                 />
               </View>
+
               <View style={styles.separator} />
+
+              {/* END DATE */}
               <View style={styles.cellRow}>
                 <Text style={styles.cellLabel}>End Date</Text>
                 <DateTimePicker
                   value={endDate}
                   mode="date"
                   display="compact"
-                  minimumDate={startDate}
-                  style={styles.compactPicker}
-                  onChange={(e, date) => {
-                    if (!date) return;
-
-                    let current = new Date(startDate);
-                    let hasConflict = false;
-                    while (current <= date) {
-                      if (isDateOccupied(current, availability)) {
-                        hasConflict = true;
-                        break;
-                      }
-                      current.setDate(current.getDate() + 1);
-                    }
-
-                    if (hasConflict) {
-                      Alert.alert(
-                        "Range Conflict",
-                        "Your selected end date creates a range that covers already occupied blocks.",
-                      );
-                      return;
-                    }
-                    setEndDate(date);
-                  }}
+                  minimumDate={startDate} // End date cannot be earlier than start date
+                  onChange={handleEndDateChange}
                 />
               </View>
             </View>
@@ -684,6 +742,15 @@ export default function Availability() {
               .filter((day) => availableDays.includes(day.id))
               .map((day) => {
                 const isExpanded = expanded === day.id;
+
+                // Convert string times into Date objects for picker boundaries
+                const workStart = parseTimeString(day.start_time);
+                const workEnd = parseTimeString(day.end_time);
+                const pauseStart = parseTimeString(
+                  day.pause_start || "12:00:00",
+                );
+                const pauseEnd = parseTimeString(day.pause_end || "13:00:00");
+
                 return (
                   <View key={day.id} style={styles.cardGroupOuter}>
                     <View
@@ -736,10 +803,12 @@ export default function Availability() {
                             <View style={styles.timeCell}>
                               <Text style={styles.timeLabel}>Starts</Text>
                               <DateTimePicker
-                                value={parseTimeString(day.start_time)}
+                                value={workStart}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
+                                // Start time cannot exceed End time
+                                maximumDate={workEnd}
                                 onChange={(e, date) =>
                                   date &&
                                   updateDay(
@@ -753,10 +822,12 @@ export default function Availability() {
                             <View style={styles.timeCell}>
                               <Text style={styles.timeLabel}>Ends</Text>
                               <DateTimePicker
-                                value={parseTimeString(day.end_time)}
+                                value={workEnd}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
+                                // End time cannot be earlier than Start time
+                                minimumDate={workStart}
                                 onChange={(e, date) =>
                                   date &&
                                   updateDay(
@@ -776,10 +847,13 @@ export default function Availability() {
                             <View style={styles.timeCell}>
                               <Text style={styles.timeLabel}>From</Text>
                               <DateTimePicker
-                                value={parseTimeString(day.pause_start)}
+                                value={pauseStart}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
+                                // Must be after work start, but before pause end
+                                minimumDate={workStart}
+                                maximumDate={pauseEnd}
                                 onChange={(e, date) =>
                                   date &&
                                   updateDay(
@@ -793,10 +867,13 @@ export default function Availability() {
                             <View style={styles.timeCell}>
                               <Text style={styles.timeLabel}>To</Text>
                               <DateTimePicker
-                                value={parseTimeString(day.pause_end)}
+                                value={pauseEnd}
                                 mode="time"
                                 display="compact"
                                 is24Hour={true}
+                                // Must be after pause start, but before work end
+                                minimumDate={pauseStart}
+                                maximumDate={workEnd}
                                 onChange={(e, date) =>
                                   date &&
                                   updateDay(

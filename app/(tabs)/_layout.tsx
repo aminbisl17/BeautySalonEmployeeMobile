@@ -54,6 +54,7 @@ export default function TabLayout() {
         name="AvailableDates"
         options={{
           href: null,
+          title: "Kalendari",
         }}
       />
       <Tabs.Screen
