@@ -1,4 +1,4 @@
-import { getData } from "@/javascript/ProfileAPI";
+import { getData } from "@/javascript/employees/ProfileAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -18,12 +19,26 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Edit Mode States
+  const [isEditing, setIsEditing] = useState(false);
+  const [emri, setEmri] = useState("");
+  const [mbiemri, setMbiemri] = useState("");
+  const [username, setUsername] = useState("");
+  const [saving, setSaving] = useState(false);
+
   const loadUser = async (isRefresh = false) => {
     try {
       await getData();
 
       const data = await SecureStore.getItemAsync("userDetails");
-      if (data) setUser(JSON.parse(data));
+      if (data) {
+        const parsedUser = JSON.parse(data);
+        setUser(parsedUser);
+        // Pre-fill edit form state
+        setEmri(parsedUser?.emri || "");
+        setMbiemri(parsedUser?.mbiemri || "");
+        setUsername(parsedUser?.username || "");
+      }
     } catch (e) {
       console.log(e);
     } finally {
@@ -53,6 +68,37 @@ export default function Profile() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true);
+      const updatedUser = { ...user, emri, mbiemri, username };
+
+      // Update state & local SecureStore
+      setUser(updatedUser);
+      await SecureStore.setItemAsync(
+        "userDetails",
+        JSON.stringify(updatedUser),
+      );
+
+      // TODO: Call your API backend update function here if available
+      // e.g., await updateUserData({ emri, mbiemri, username });
+
+      setIsEditing(false);
+    } catch (e) {
+      console.error("Gabim gjatë ruajtjes së profilit:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    // Reset values to original state
+    setEmri(user?.emri || "");
+    setMbiemri(user?.mbiemri || "");
+    setUsername(user?.username || "");
+    setIsEditing(false);
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -76,28 +122,124 @@ export default function Profile() {
         />
       }
     >
-      {/* User Avatar & Name Section */}
+      {/* 1. Profile Hero Card */}
       <View style={styles.profileHeaderCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {user?.emri?.[0]}
-            {user?.mbiemri?.[0]}
+            {emri?.[0]}
+            {mbiemri?.[0]}
           </Text>
         </View>
 
-        <Text style={styles.name}>
-          {user?.emri} {user?.mbiemri}
-        </Text>
-
-        <Text style={styles.username}>@{user?.username}</Text>
+        {!isEditing ? (
+          <>
+            <Text style={styles.name}>
+              {user?.emri} {user?.mbiemri}
+            </Text>
+            <Text style={styles.username}>@{user?.username}</Text>
+          </>
+        ) : (
+          <Text style={[styles.username, { marginTop: 4 }]}>
+            Ndryshoni të dhënat tuaja më poshtë
+          </Text>
+        )}
       </View>
 
-      {/* Account Details Group */}
+      {/* 2. Account Details Section Panel */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Të Dëshirat e Llogarisë</Text>
+        <Text style={styles.sectionTitle}>Të Dhënat e Llogarisë</Text>
 
         <View style={styles.groupCard}>
-          {/* Email Row */}
+          {/* Editable Name Row */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Emri</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.value, styles.input]}
+                    value={emri}
+                    onChangeText={setEmri}
+                    placeholder="Vendos emrin"
+                    placeholderTextColor="#94A3B8"
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {user?.emri || "E papërcaktuar"}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.separator} />
+
+          {/* Editable Last Name Row */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="person-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Mbiemri</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.value, styles.input]}
+                    value={mbiemri}
+                    onChangeText={setMbiemri}
+                    placeholder="Vendos mbiemrin"
+                    placeholderTextColor="#94A3B8"
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {user?.mbiemri || "E papërcaktuar"}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.separator} />
+
+          {/* Editable Username Row */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="at-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Emri i Përdoruesit</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.value, styles.input]}
+                    value={username}
+                    onChangeText={setUsername}
+                    placeholder="Vendos përdoruesin"
+                    placeholderTextColor="#94A3B8"
+                    autoCapitalize="none"
+                  />
+                ) : (
+                  <Text style={styles.value}>@{user?.username}</Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.separator} />
+
+          {/* Read-Only Email Row */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -117,7 +259,7 @@ export default function Profile() {
 
           <View style={styles.separator} />
 
-          {/* Phone Number Row */}
+          {/* Read-Only Phone Row */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -134,41 +276,79 @@ export default function Profile() {
               </View>
             </View>
           </View>
-
-          <View style={styles.separator} />
-
-          {/* Username Row */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="at-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View>
-                <Text style={styles.label}>Emri i Përdoruesit</Text>
-                <Text style={styles.value}>@{user?.username}</Text>
-              </View>
-            </View>
-          </View>
         </View>
       </View>
 
-      {/* Logout Button */}
-      <TouchableOpacity
-        onPress={handleLogout}
-        activeOpacity={0.8}
-        style={styles.logoutButton}
-      >
-        <Ionicons
-          name="log-out-outline"
-          size={18}
-          color="#EF4444"
-          style={{ marginRight: 6 }}
-        />
-        <Text style={styles.logoutText}>Dil nga Llogaria</Text>
-      </TouchableOpacity>
+      {/* 3. Actions Section */}
+      <View style={{ gap: 10 }}>
+        {!isEditing ? (
+          <>
+            {/* Edit Profile Button */}
+            <TouchableOpacity
+              onPress={() => setIsEditing(true)}
+              activeOpacity={0.8}
+              style={styles.editButton}
+            >
+              <Ionicons
+                name="create-outline"
+                size={18}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.editButtonText}>Ndrysho Të Dhënat</Text>
+            </TouchableOpacity>
+
+            {/* Logout Button */}
+            <TouchableOpacity
+              onPress={handleLogout}
+              activeOpacity={0.8}
+              style={styles.logoutButton}
+            >
+              <Ionicons
+                name="log-out-outline"
+                size={18}
+                color="#EF4444"
+                style={{ marginRight: 6 }}
+              />
+              <Text style={styles.logoutText}>Dil nga Llogaria</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            {/* Save Button */}
+            <TouchableOpacity
+              onPress={handleSaveProfile}
+              disabled={saving}
+              activeOpacity={0.8}
+              style={styles.editButton}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="checkmark-outline"
+                    size={18}
+                    color="#FFFFFF"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.editButtonText}>Ruaj Ndryshimet</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              onPress={handleCancelEdit}
+              disabled={saving}
+              activeOpacity={0.8}
+              style={styles.cancelButton}
+            >
+              <Text style={styles.cancelText}>Anulo</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -256,6 +436,21 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
+  /* Primary Action Button Styles */
+  editButton: {
+    backgroundColor: "#4F46E5",
+    borderRadius: 10,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+
   /* Card Sections */
   section: {
     marginBottom: 20,
@@ -303,6 +498,12 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     fontWeight: "500",
   },
+  input: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#4F46E5",
+    paddingVertical: 2,
+    marginTop: 2,
+  },
   separator: {
     height: 1,
     backgroundColor: "#F1F5F9",
@@ -319,10 +520,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#FEE2E2",
-    marginTop: 8,
   },
   logoutText: {
     color: "#EF4444",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  cancelButton: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  cancelText: {
+    color: "#64748B",
     fontSize: 15,
     fontWeight: "600",
   },

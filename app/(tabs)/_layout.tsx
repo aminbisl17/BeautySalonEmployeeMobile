@@ -34,20 +34,20 @@ export default function TabLayout() {
       <Tabs.Screen
         name="Profile"
         options={{
-          title: "Profile",
+          title: "Profili",
         }}
       />
 
       <Tabs.Screen
         name="Home"
         options={{
-          title: "Dashboard",
+          title: "Ballina",
         }}
       />
       <Tabs.Screen
         name="QrScanner"
         options={{
-          title: "Scanner",
+          title: "Skaneri",
         }}
       />
       <Tabs.Screen
@@ -57,6 +57,14 @@ export default function TabLayout() {
           title: "Kalendari",
         }}
       />
+      <Tabs.Screen
+        name="skills"
+        options={{
+          href: null,
+          title: "Aftesite",
+        }}
+      />
+
       <Tabs.Screen
         name="Terminet"
         options={{

@@ -16,7 +16,7 @@ import {
   getAvailability,
   setAvailableDates,
   updateDates,
-} from "@/javascript/AvailableDates";
+} from "@/javascript/employees/AvailableDates";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
@@ -298,9 +298,10 @@ export default function Availability() {
     });
   };
 
-  // 1. START DATE ONCHANGE
+  // 1. S// 1. START DATE ONCHANGE
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    if (!selectedDate) return;
+    // Handle Android back button/dismissal
+    if (event?.type === "dismissed" || !selectedDate) return;
 
     const cleanStartDate = normalizeToMidnight(selectedDate);
     const targetEndDate = cleanStartDate > endDate ? cleanStartDate : endDate;
@@ -332,7 +333,7 @@ export default function Availability() {
 
   // 2. END DATE ONCHANGE
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    if (!selectedDate) return;
+    if (event?.type === "dismissed" || !selectedDate) return;
 
     const cleanEndDate = normalizeToMidnight(selectedDate);
 
@@ -680,22 +681,25 @@ export default function Availability() {
             color="#4F46E5"
           />
         </Pressable>
-
         {showSetupForm && (
           <View style={styles.formContainer}>
             {/* DATE RANGE */}
             <Text style={styles.innerSectionTitle}>
               Zgjidh Periudhën e Datave
             </Text>
+
             <View style={styles.cardGroup}>
               {/* START DATE */}
               <View style={styles.cellRow}>
                 <Text style={styles.cellLabel}>Data e Fillimit</Text>
                 <DateTimePicker
-                  value={startDate}
+                  value={
+                    startDate instanceof Date && !isNaN(startDate.getTime())
+                      ? startDate
+                      : new Date()
+                  }
                   mode="date"
                   display="compact"
-                  minimumDate={normalizeToMidnight(new Date())}
                   onChange={handleStartDateChange}
                 />
               </View>
@@ -706,10 +710,18 @@ export default function Availability() {
               <View style={styles.cellRow}>
                 <Text style={styles.cellLabel}>Data e Përfundimit</Text>
                 <DateTimePicker
-                  value={endDate}
+                  value={
+                    endDate instanceof Date && !isNaN(endDate.getTime())
+                      ? endDate
+                      : new Date()
+                  }
                   mode="date"
                   display="compact"
-                  minimumDate={startDate}
+                  minimumDate={
+                    startDate instanceof Date && !isNaN(startDate.getTime())
+                      ? startDate
+                      : new Date()
+                  }
                   onChange={handleEndDateChange}
                 />
               </View>
@@ -878,391 +890,6 @@ export default function Availability() {
   );
 }
 
-/*
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  contentContainer: {
-    paddingBottom: 48,
-    paddingTop: 24,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#0F172A",
-    letterSpacing: -0.6,
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#64748B",
-    marginBottom: 12,
-    marginHorizontal: 20,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  innerSectionTitle: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#64748B",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  setupToggleFormButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  setupToggleFormButtonActive: {
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  setupToggleTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#4F46E5",
-  },
-  setupToggleSubtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
-  },
-  formContainer: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
-    padding: 20,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderWidth: 1,
-    borderTopWidth: 0,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  cardGroupOuter: {
-    marginBottom: 12,
-  },
-  cardGroup: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  cardActiveBorder: {
-    borderColor: "#C7D2FE",
-  },
-  currentCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    marginHorizontal: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardActiveShadow: {
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    borderColor: "#C7D2FE",
-  },
-  currentHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  currentDateRange: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#0F172A",
-  },
-  currentDetailItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-  detailBadge: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#4F46E5",
-    marginTop: 6,
-    marginRight: 10,
-  },
-  detailTimeText: {
-    fontSize: 14,
-    color: "#334155",
-    marginTop: 2,
-  },
-  cellRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    minHeight: 56,
-  },
-  cellLabel: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#334155",
-  },
-  compactPicker: {
-    marginRight: -4,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-    marginLeft: 16,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  dayName: {
-    fontSize: 15,
-    fontWeight: "500",
-    color: "#94A3B8",
-  },
-  dayNameActive: {
-    color: "#0F172A",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  statusSubtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
-  },
-  breakText: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dayContent: {
-    padding: 16,
-    backgroundColor: "#F8FAFC",
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-  },
-  groupLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#64748B",
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  timeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 12,
-  },
-  timeCell: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  timeLabel: {
-    fontSize: 14,
-    color: "#475569",
-  },
-  button: {
-    backgroundColor: "#4F46E5",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  loading: {
-    textAlign: "center",
-    color: "#64748B",
-    marginVertical: 20,
-  },
-  editContainer: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-  dateRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  dateBox: {
-    flex: 1,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#64748B",
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    color: "#0F172A",
-  },
-  editDayCard: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  dayTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  timeInput: {
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 14,
-    textAlign: "center",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 12,
-    marginTop: 16,
-  },
-  cancelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#F1F5F9",
-  },
-  cancelButtonText: {
-    color: "#475569",
-    fontWeight: "600",
-  },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: "#4F46E5",
-  },
-  saveButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 16,
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-  },
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  editButtonText: {
-    color: "#4F46E5",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  deleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  deleteButtonText: {
-    color: "#EF4444",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: "#0F172A",
-    letterSpacing: -0.6,
-    marginBottom: 0,
-  },
-});
-*/
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -13,7 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { validateCode } from "../../javascript/AttendanceAPI";
+import { validateCode } from "../../javascript/employees/AttendanceAPI";
 
 const { width } = Dimensions.get("window");
 const innerFrameSize = width * 0.7;

@@ -14,7 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getData } from "../javascript/ProfileAPI";
+import { getData } from "../javascript/employees/ProfileAPI";
 
 export default function LoginView() {
   const API_AUTHENTICATION_LOGIN =

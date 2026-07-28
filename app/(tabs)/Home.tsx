@@ -42,7 +42,7 @@ export default function Home() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header */}
+      {/* Top Header 
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Ballina</Text>
@@ -53,9 +53,25 @@ export default function Home() {
         >
           <Ionicons name="person-outline" size={20} color="#4F46E5" />
         </Pressable>
-      </View>
+      </View> */}
 
       {/* Quick Action: Availability Setup */}
+
+      <Pressable
+        style={styles.actionCard}
+        onPress={() => router.push("/skills")}
+      >
+        <View style={styles.cardLeft}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="color-palette-outline" size={22} color="#4F46E5" />
+          </View>
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>Aftesite</Text>
+            <Text style={styles.subtitle}>Menaxhoni aftesite</Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+      </Pressable>
       <Pressable
         style={styles.actionCard}
         onPress={() => router.push("/AvailableDates")}

@@ -27,6 +27,9 @@ export default {
       API_SKILLS_GET_ID: process.env.API_SKILLS_GET_ID,
       API_SKILLS_UPDATE: process.env.API_SKILLS_UPDATE,
       API_SKILLS_DELETE: process.env.API_SKILLS_DELETE,
+
+      API_SHERBIMET_ALL: process.env.API_SHERBIMET_ALL,
+      API_SHERBIMET_ATRIBUTET: process.env.API_SHERBIMET_ATRIBUTET,
     },
   },
 };
