@@ -21,3 +21,25 @@ export async function fetchServices() {
     throw new Error(errorMessage);
   }
 }
+
+export async function fetchServiceAtributes(id) {
+  const API_SHERBIMET_ATRIBUTET =
+    Constants.expoConfig?.extra?.API_SHERBIMET_ATRIBUTET;
+
+  if (!API_SHERBIMET_ATRIBUTET) {
+    throw new Error("API missing for API_SHERBIMET_ATRIBUTET!");
+  }
+  try {
+    const response = await axios.get(API_SHERBIMET_ATRIBUTET + id, {
+      withCredentials: true,
+    });
+
+    return response.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+
+    Alert.alert("Error", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
