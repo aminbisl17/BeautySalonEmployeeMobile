@@ -67,3 +67,26 @@ export async function addSkills(skills) {
     throw new Error(errorMessage);
   }
 }
+
+export async function deleteSkill(id) {
+  const API_SKILLS_DELETE = Constants.expoConfig?.extra?.API_SKILLS_DELETE;
+  const token = await SecureStore.getItemAsync("accessToken");
+  console.log(API_SKILLS_DELETE + id);
+  if (!API_SKILLS_DELETE) {
+    throw new Error("Missing API_SKILLS_UPDATE");
+  }
+  try {
+    const res = await axios.delete(API_SKILLS_DELETE + id, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    return res.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+    Alert.alert("Error", errorMessage);
+  }
+}

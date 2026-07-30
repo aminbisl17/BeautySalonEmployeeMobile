@@ -1,4 +1,8 @@
-import { addSkills, getSkills } from "@/javascript/employees/skillsAPI";
+import {
+  addSkills,
+  deleteSkill,
+  getSkills,
+} from "@/javascript/employees/skillsAPI";
 import {
   fetchServiceAtributes,
   fetchServices,
@@ -46,14 +50,30 @@ export default function Skills() {
   const loadSkills = async () => {
     try {
       const res = await getSkills();
-      if (res && res.services) {
-        setEmployeeSkills(res.services);
-      }
+
+      // Safely extract array regardless of whether backend returns [...] or { data: [...] }
+      const rawSkills = Array.isArray(res) ? res : (res?.data ?? []);
+
+      const formatted = rawSkills.map((skill: any) => ({
+        id: skill.id,
+        id_employee: skill.id_employee,
+        id_service: skill.id_service,
+        ID: skill.service?.ID ?? skill.id_service,
+        emri_sherbimit: skill.service?.emri_sherbimit ?? "",
+        pershkrimi: skill.service?.pershkrimi ?? "",
+        qmimi_baze: skill.service?.qmimi_baze ?? 0,
+        kohezgjatja: skill.service?.kohezgjatja ?? 0,
+        imagePath: skill.service?.imagepath ?? null,
+        atributet: skill.service?.atributet ?? [],
+        service: skill.service,
+      }));
+
+      setEmployeeSkills(formatted);
     } catch (e) {
       console.log("Error loading skills:", e);
+      setEmployeeSkills([]); // Fallback to empty array on error
     }
   };
-
   const loadServiceAttributes = async (id: number, serviceName: string) => {
     setSelectedServiceName(serviceName);
     setModalVisible(true);
@@ -84,27 +104,6 @@ export default function Skills() {
     await Promise.all([loadServices(), loadSkills()]);
     setRefreshing(false);
   }, []);
-
-  const saveSkillsToBackend = async (newSkillsList: any[]) => {
-    setSubmitting(true);
-    try {
-      const rawIds = newSkillsList.map((item) => item.ID);
-      const uniqueServiceIds = Array.from(new Set(rawIds));
-
-      const payload = {
-        id_services: uniqueServiceIds,
-      };
-
-      await addSkills(payload);
-      setEmployeeSkills(newSkillsList);
-    } catch (error) {
-      console.log("Error updating skills:", error);
-      Alert.alert("Gabim", "Dështoi ruajtja e aftësive te serveri.");
-      await loadSkills();
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const handleAddSkill = async (service: any) => {
     if (employeeSkills.some((s) => s.ID === service.ID)) {
@@ -148,10 +147,9 @@ export default function Skills() {
           text: "Fshij",
           style: "destructive",
           onPress: async () => {
-            const updatedSkills = employeeSkills.filter(
-              (s) => s.ID !== serviceId,
-            );
-            await saveSkillsToBackend(updatedSkills);
+            await deleteSkill(serviceId);
+            await loadSkills();
+            //  await saveSkillsToBackend(updatedSkills);
           },
         },
       ],
@@ -159,6 +157,7 @@ export default function Skills() {
   };
 
   const handleModifySkill = (service: any) => {
+    //   console.log(service);
     Alert.alert(
       "Modifiko Aftësinë",
       `Modifiko detajet e aftësisë: ${service.emri_sherbimit}`,
@@ -235,21 +234,21 @@ export default function Skills() {
               </View>
               <Text style={styles.emptyTitle}>Asnjë aftësi e shtuar</Text>
               <Text style={styles.emptyText}>
-                Zgjidhni shërbime nga lista më poshtë për t'i shtuar te profilin
-                tuaj.
+                Zgjidhni shërbime nga lista më poshtë për t'i shtuar te profili
+                juaj.
               </Text>
             </View>
           ) : (
             employeeSkills.map((skill, index) => (
               <SkillCard
-                key={skill.ID ? `skill-${skill.ID}-${index}` : index}
+                key={`skill-${skill.id}-${index}`}
                 skill={skill}
                 submitting={submitting}
                 onPress={() =>
-                  loadServiceAttributes(skill.ID, skill.emri_sherbimit)
+                  loadServiceAttributes(skill.id_service, skill.emri_sherbimit)
                 }
                 onModify={() => handleModifySkill(skill)}
-                onRemove={() => handleRemoveSkill(skill.ID)}
+                onRemove={() => handleRemoveSkill(skill.id)}
               />
             ))
           )}
