@@ -33,3 +33,37 @@ export async function getSkills() {
     throw new Error(errorMessage);
   }
 }
+
+export async function addSkills(skills) {
+  const API_SKILLS_ADD = Constants.expoConfig?.extra?.API_SKILLS_ADD;
+
+  if (!API_SKILLS_ADD) {
+    throw new Error("missing API_SKILLS_ADD");
+  }
+
+  const token = await SecureStore.getItemAsync("accessToken");
+  const userID = await SecureStore.getItemAsync("userDetails");
+  try {
+    const response = await axios.post(
+      API_SKILLS_ADD,
+      {
+        id_employee: JSON.parse(userID).ID,
+        id_services: skills.id_services,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    const errorMessage =
+      error.response?.data || error.message || "Something went wrong.";
+
+    Alert.alert("Error", errorMessage);
+    throw new Error(errorMessage);
+  }
+}

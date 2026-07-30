@@ -4,6 +4,10 @@ export default {
   expo: {
     plugins: ["@react-native-community/datetimepicker"],
 
+    name: "BeautySalon",
+    slug: "my-app",
+    orientation: "portrait",
+
     extra: {
       // Siguria & autorizimi
       API_AUTHENTICATION_LOGIN: process.env.API_AUTHENTICATION_LOGIN,
