@@ -30,13 +30,16 @@ export default function Skills() {
   const [submitting, setSubmitting] = useState(false);
   const [services, setServices] = useState<any[]>([]);
   const [employeeSkills, setEmployeeSkills] = useState<any[]>([]);
-  const [showAllServices, setShowAllServices] = useState(false);
 
-  // Modal & Attributes State
+  // Section visibility toggles
+  const [showEmployeeSkills, setShowEmployeeSkills] = useState(true);
+  const [showAllServices, setShowAllServices] = useState(true);
+
+  // Modal & Service detail state
   const [modalVisible, setModalVisible] = useState(false);
   const [attributes, setAttributes] = useState<any[]>([]);
   const [loadingAttributes, setLoadingAttributes] = useState(false);
-  const [selectedServiceName, setSelectedServiceName] = useState("");
+  const [selectedService, setSelectedService] = useState<any>(null);
 
   const loadServices = async () => {
     try {
@@ -50,10 +53,7 @@ export default function Skills() {
   const loadSkills = async () => {
     try {
       const res = await getSkills();
-
-      // Safely extract array regardless of whether backend returns [...] or { data: [...] }
       const rawSkills = Array.isArray(res) ? res : (res?.data ?? []);
-
       const formatted = rawSkills.map((skill: any) => ({
         id: skill.id,
         id_employee: skill.id_employee,
@@ -71,15 +71,17 @@ export default function Skills() {
       setEmployeeSkills(formatted);
     } catch (e) {
       console.log("Error loading skills:", e);
-      setEmployeeSkills([]); // Fallback to empty array on error
+      setEmployeeSkills([]);
     }
   };
-  const loadServiceAttributes = async (id: number, serviceName: string) => {
-    setSelectedServiceName(serviceName);
+
+  const loadServiceAttributes = async (service: any) => {
+    setSelectedService(service);
     setModalVisible(true);
     setLoadingAttributes(true);
     try {
-      const res = await fetchServiceAtributes(id);
+      const serviceId = service.id_service || service.ID;
+      const res = await fetchServiceAtributes(serviceId);
       setAttributes(res?.atributet || []);
     } catch (e) {
       console.log("Error loading attributes:", e);
@@ -107,25 +109,25 @@ export default function Skills() {
 
   const handleAddSkill = async (service: any) => {
     if (employeeSkills.some((s) => s.ID === service.ID)) {
-      Alert.alert("Njoftim", "Kjo aftësi është e shtuar tashmë.");
+      Alert.alert(
+        "Njoftim",
+        "Kjo aftësi është e shtuar tashmë te profili juaj.",
+      );
       return;
     }
 
     Alert.alert(
-      "Shto Aftësi",
-      `A dëshironi të shtoni "${service.emri_sherbimit}" te aftësitë tuaja?`,
+      "Aktivizo Shërbimin",
+      `Dëshironi ta shtoni shërbimin "${service.emri_sherbimit}" në menu-në tuaj të shërbimeve?`,
       [
         { text: "Anulo", style: "cancel" },
         {
-          text: "Shto",
+          text: "Shto Shërbimin",
           onPress: async () => {
             setSubmitting(true);
             try {
-              // Option A: Send ONLY the newly added ID if your backend just does INSERT
               await addSkills({ id_services: [service.ID] });
-
-              // Update UI state upon success
-              setEmployeeSkills((prev) => [...prev, service]);
+              await loadSkills();
             } catch (error) {
               console.log("Error updating skills:", error);
               Alert.alert("Gabim", "Dështoi ruajtja e aftësive te serveri.");
@@ -137,33 +139,21 @@ export default function Skills() {
       ],
     );
   };
-  const handleRemoveSkill = (serviceId: number) => {
+
+  const handleRemoveSkill = (serviceId: number, serviceName: string) => {
     Alert.alert(
-      "Fshij Aftësinë",
-      "A jeni të sigurt që dëshironi ta fshini këtë aftësi?",
+      "Largo Shërbimin",
+      `A jeni të sigurt që dëshironi ta largoni "${serviceName}" nga menuja juaj? Klientët nuk do të mund ta rezervojnë më me ju.`,
       [
         { text: "Anulo", style: "cancel" },
         {
-          text: "Fshij",
+          text: "Largo",
           style: "destructive",
           onPress: async () => {
             await deleteSkill(serviceId);
             await loadSkills();
-            //  await saveSkillsToBackend(updatedSkills);
           },
         },
-      ],
-    );
-  };
-
-  const handleModifySkill = (service: any) => {
-    //   console.log(service);
-    Alert.alert(
-      "Modifiko Aftësinë",
-      `Modifiko detajet e aftësisë: ${service.emri_sherbimit}`,
-      [
-        { text: "Rregullo", onPress: () => {} },
-        { text: "Anulo", style: "cancel" },
       ],
     );
   };
@@ -172,10 +162,24 @@ export default function Skills() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Po ngarkohen të dhënat...</Text>
+        <Text style={styles.loadingText}>
+          Po ngarkohet portofoli i shërbimeve...
+        </Text>
       </View>
     );
   }
+
+  // Calculate quick metrics for the beauty artist
+  const totalServices = employeeSkills.length;
+  const avgDuration =
+    totalServices > 0
+      ? Math.round(
+          employeeSkills.reduce(
+            (acc, curr) => acc + (curr.kohezgjatja || 0),
+            0,
+          ) / totalServices,
+        )
+      : 0;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -193,7 +197,7 @@ export default function Skills() {
             />
           }
         >
-          {/* HEADER */}
+          {/* TOP HEADER */}
           <View style={styles.header}>
             <Pressable
               style={({ pressed }) => [
@@ -205,8 +209,10 @@ export default function Skills() {
               <Ionicons name="arrow-back" size={20} color="#4F46E5" />
             </Pressable>
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.title}>Aftësitë e Punonjësit</Text>
-              <Text style={styles.subtitle}>Menaxhoni shërbimet tuaja</Text>
+              <Text style={styles.title}>Menuja e Shërbimeve</Text>
+              <Text style={styles.subtitle}>
+                Menaxhoni specializimet & trajtimet tuaja
+              </Text>
             </View>
             {submitting && (
               <ActivityIndicator
@@ -217,43 +223,90 @@ export default function Skills() {
             )}
           </View>
 
-          {/* SECTION 1: CURRENT EMPLOYEE SKILLS */}
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleRow}>
-              <Text style={styles.sectionTitle}>Aftësitë Aktuale</Text>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{employeeSkills.length}</Text>
-              </View>
+          {/* BEAUTY ARTIST OVERVIEW SUMMARY */}
+          <View style={styles.summaryBar}>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{totalServices}</Text>
+              <Text style={styles.summaryLabel}>Shërbime Aktive</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>{avgDuration} min</Text>
+              <Text style={styles.summaryLabel}>Kohëzgjatja Mesatare</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryValue}>
+                {services.length - totalServices}
+              </Text>
+              <Text style={styles.summaryLabel}>Të Disponueshme</Text>
             </View>
           </View>
 
-          {employeeSkills.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <View style={styles.emptyIconContainer}>
-                <Ionicons name="sparkles-outline" size={32} color="#94A3B8" />
+          {/* SECTION 1: ACTIVE BEAUTY SERVICES (PORTFOLIO) */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.dropdownHeader,
+              pressed && styles.pressedState,
+            ]}
+            onPress={() => setShowEmployeeSkills(!showEmployeeSkills)}
+          >
+            <View style={styles.dropdownTitleContainer}>
+              <View style={styles.dropdownIconWrapper}>
+                <Ionicons name="cut-outline" size={18} color="#4F46E5" />
               </View>
-              <Text style={styles.emptyTitle}>Asnjë aftësi e shtuar</Text>
-              <Text style={styles.emptyText}>
-                Zgjidhni shërbime nga lista më poshtë për t'i shtuar te profili
-                juaj.
-              </Text>
+              <View>
+                <Text style={styles.dropdownTitle}>
+                  Portofoli Im i Shërbimeve
+                </Text>
+                <Text style={styles.dropdownSub}>
+                  {employeeSkills.length} shërbime që ofroni aktualisht
+                </Text>
+              </View>
             </View>
-          ) : (
-            employeeSkills.map((skill, index) => (
-              <SkillCard
-                key={`skill-${skill.id}-${index}`}
-                skill={skill}
-                submitting={submitting}
-                onPress={() =>
-                  loadServiceAttributes(skill.id_service, skill.emri_sherbimit)
-                }
-                onModify={() => handleModifySkill(skill)}
-                onRemove={() => handleRemoveSkill(skill.id)}
-              />
-            ))
+            <Ionicons
+              name={showEmployeeSkills ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#64748B"
+            />
+          </Pressable>
+
+          {showEmployeeSkills && (
+            <View style={styles.dropdownContent}>
+              {employeeSkills.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <View style={styles.emptyIconContainer}>
+                    <Ionicons
+                      name="sparkles-outline"
+                      size={32}
+                      color="#94A3B8"
+                    />
+                  </View>
+                  <Text style={styles.emptyTitle}>
+                    Nuk keni shtuar asnjë shërbim
+                  </Text>
+                  <Text style={styles.emptyText}>
+                    Zgjidhni shërbimet nga katalogu i sallonit më poshtë për t'i
+                    aktivizuar në profilin tuaj profesional.
+                  </Text>
+                </View>
+              ) : (
+                employeeSkills.map((skill, index) => (
+                  <BeautySkillCard
+                    key={`skill-${skill.id}-${index}`}
+                    skill={skill}
+                    submitting={submitting}
+                    onPress={() => loadServiceAttributes(skill)}
+                    onRemove={() =>
+                      handleRemoveSkill(skill.id, skill.emri_sherbimit)
+                    }
+                  />
+                ))
+              )}
+            </View>
           )}
 
-          {/* SECTION 2: ALL AVAILABLE SERVICES */}
+          {/* SECTION 2: SALON CATALOG (AVAILABLE SERVICES) */}
           <Pressable
             style={({ pressed }) => [
               styles.dropdownHeader,
@@ -266,11 +319,9 @@ export default function Skills() {
                 <Ionicons name="grid-outline" size={18} color="#4F46E5" />
               </View>
               <View>
-                <Text style={styles.dropdownTitle}>
-                  Shërbimet e Disponueshme
-                </Text>
+                <Text style={styles.dropdownTitle}>Katalogu i Sallonit</Text>
                 <Text style={styles.dropdownSub}>
-                  {services.length} shërbime të gatshme
+                  {services.length} trajtime të gatshme për shtim
                 </Text>
               </View>
             </View>
@@ -286,14 +337,12 @@ export default function Skills() {
               {services.map((service, index) => {
                 const isAdded = employeeSkills.some((s) => s.ID === service.ID);
                 return (
-                  <AvailableServiceCard
+                  <AvailableBeautyServiceCard
                     key={service.ID ? `service-${service.ID}-${index}` : index}
                     service={service}
                     isAdded={isAdded}
                     submitting={submitting}
-                    onPress={() =>
-                      loadServiceAttributes(service.ID, service.emri_sherbimit)
-                    }
+                    onPress={() => loadServiceAttributes(service)}
                     onAdd={() => handleAddSkill(service)}
                   />
                 );
@@ -302,7 +351,7 @@ export default function Skills() {
           )}
         </ScrollView>
 
-        {/* ATTRIBUTES MODAL */}
+        {/* SERVICE ATTRIBUTES & VARIATIONS MODAL */}
         <Modal
           animationType="fade"
           transparent={true}
@@ -314,9 +363,9 @@ export default function Skills() {
               <View style={styles.modalPill} />
               <View style={styles.modalHeader}>
                 <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={styles.modalTitle}>Atributet e Shërbimit</Text>
+                  <Text style={styles.modalTitle}>Variacionet & Detajet</Text>
                   <Text style={styles.modalSubtitle} numberOfLines={1}>
-                    {selectedServiceName}
+                    {selectedService?.emri_sherbimit}
                   </Text>
                 </View>
                 <Pressable
@@ -334,7 +383,7 @@ export default function Skills() {
                 <View style={styles.modalLoading}>
                   <ActivityIndicator size="small" color="#4F46E5" />
                   <Text style={styles.modalLoadingText}>
-                    Po ngarkohen atributet...
+                    Po ngarkohen variacionet e trajtimit...
                   </Text>
                 </View>
               ) : attributes.length === 0 ? (
@@ -345,7 +394,8 @@ export default function Skills() {
                     color="#94A3B8"
                   />
                   <Text style={styles.modalEmptyText}>
-                    Kjo shërbim nuk ka atribute të caktuara.
+                    Ky shërbim ka vetëm çmimin bazë dhe nuk përmban
+                    nen-variacione.
                   </Text>
                 </View>
               ) : (
@@ -372,17 +422,17 @@ export default function Skills() {
     </SafeAreaView>
   );
 }
-function SkillCard({
+
+/* Active Beauty Skill Card Component */
+function BeautySkillCard({
   skill,
   submitting,
   onPress,
-  onModify,
   onRemove,
 }: {
   skill: any;
   submitting: boolean;
   onPress: () => void;
-  onModify: () => void;
   onRemove: () => void;
 }) {
   return (
@@ -394,7 +444,6 @@ function SkillCard({
         ]}
         onPress={onPress}
       >
-        {/* SERVICE IMAGE / FALLBACK */}
         <View style={styles.imageContainer}>
           {skill.imagePath ? (
             <Image
@@ -405,14 +454,19 @@ function SkillCard({
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="briefcase-outline" size={24} color="#94A3B8" />
+              <Ionicons name="sparkles-outline" size={24} color="#94A3B8" />
             </View>
           )}
         </View>
 
-        {/* DETAILS */}
         <View style={styles.info}>
-          <Text style={styles.name}>{skill.emri_sherbimit}</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.name}>{skill.emri_sherbimit}</Text>
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>Aktiv</Text>
+            </View>
+          </View>
+
           {skill.pershkrimi ? (
             <Text style={styles.description} numberOfLines={2}>
               {skill.pershkrimi}
@@ -432,19 +486,7 @@ function SkillCard({
         </View>
       </Pressable>
 
-      {/* ACTION BUTTONS */}
       <View style={styles.actionColumn}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.iconBtn,
-            styles.editBtn,
-            pressed && styles.pressedState,
-          ]}
-          onPress={onModify}
-          disabled={submitting}
-        >
-          <Ionicons name="pencil" size={15} color="#4F46E5" />
-        </Pressable>
         <Pressable
           style={({ pressed }) => [
             styles.iconBtn,
@@ -454,14 +496,15 @@ function SkillCard({
           onPress={onRemove}
           disabled={submitting}
         >
-          <Ionicons name="trash-outline" size={15} color="#EF4444" />
+          <Ionicons name="trash-outline" size={16} color="#EF4444" />
         </Pressable>
       </View>
     </View>
   );
 }
 
-function AvailableServiceCard({
+/* Available Salon Catalog Card Component */
+function AvailableBeautyServiceCard({
   service,
   isAdded,
   submitting,
@@ -511,6 +554,10 @@ function AvailableServiceCard({
               <Ionicons name="cash-outline" size={13} color="#4F46E5" />
               <Text style={styles.priceTagText}>€{service.qmimi_baze}</Text>
             </View>
+            <View style={styles.timeTag}>
+              <Ionicons name="time-outline" size={13} color="#64748B" />
+              <Text style={styles.timeTagText}>{service.kohezgjatja} min</Text>
+            </View>
           </View>
         </View>
       </Pressable>
@@ -527,17 +574,18 @@ function AvailableServiceCard({
       >
         <Ionicons
           name={isAdded ? "checkmark" : "add"}
-          size={18}
+          size={16}
           color={isAdded ? "#10B981" : "#FFFFFF"}
         />
         <Text style={[styles.addBtnText, isAdded && styles.addedBtnText]}>
-          {isAdded ? "Shtuar" : "Shto"}
+          {isAdded ? "Aktiv" : "Shto"}
         </Text>
       </Pressable>
     </View>
   );
 }
 
+/* Modal Attribute Item Component */
 function AttributeItem({ attr }: { attr: any }) {
   return (
     <View style={styles.attrCard}>
@@ -567,10 +615,6 @@ function AttributeItem({ attr }: { attr: any }) {
     </View>
   );
 }
-
-// ==========================================
-// REFINED & COMPATIBLE STYLES
-// ==========================================
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -604,7 +648,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 16,
     marginTop: 6,
   },
   backButton: {
@@ -630,31 +674,46 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginTop: 2,
   },
-  sectionHeader: {
-    marginBottom: 12,
-  },
-  sectionTitleRow: {
+
+  /* BEAUTY ARTIST OVERVIEW BAR */
+  summaryBar: {
     flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     alignItems: "center",
-    gap: 8,
+    justifyContent: "space-around",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F172A",
-    letterSpacing: -0.2,
+  summaryItem: {
+    alignItems: "center",
+    flex: 1,
   },
-  badge: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "700",
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: "800",
     color: "#4F46E5",
   },
+  summaryLabel: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  summaryDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#E2E8F0",
+  },
+
   emptyCard: {
     padding: 24,
     backgroundColor: "#FFFFFF",
@@ -662,7 +721,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    marginBottom: 16,
+    marginBottom: 10,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
@@ -690,11 +749,56 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 18,
   },
+
+  /* DROPDOWNS & CARDS */
+  dropdownHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 14,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  dropdownTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  dropdownIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dropdownTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  dropdownSub: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  dropdownContent: {
+    marginTop: 10,
+  },
+
   skillCard: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 14,
+    padding: 12,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E2E8F0",
@@ -704,6 +808,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 2,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingRight: 6,
+  },
+  activeBadge: {
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  activeBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#10B981",
   },
   metaRow: {
     flexDirection: "row",
@@ -742,7 +863,7 @@ const styles = StyleSheet.create({
   actionColumn: {
     flexDirection: "row",
     gap: 6,
-    marginLeft: 10,
+    marginLeft: 8,
   },
   iconBtn: {
     width: 36,
@@ -751,54 +872,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  editBtn: {
-    backgroundColor: "#EEF2FF",
-  },
   deleteBtn: {
     backgroundColor: "#FEF2F2",
   },
-  dropdownHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 14,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  dropdownTitleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  dropdownIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#EEF2FF",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  dropdownTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  dropdownSub: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 1,
-  },
-  dropdownContent: {
-    marginTop: 10,
-  },
+
   card: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
@@ -856,11 +933,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  detailText: {
-    fontSize: 12,
-    color: "#334155",
-    marginLeft: 4,
-  },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -888,7 +960,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
 
-  /* Modal Styles */
+  /* MODAL STYLES */
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.45)",
