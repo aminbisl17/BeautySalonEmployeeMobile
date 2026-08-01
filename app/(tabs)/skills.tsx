@@ -17,7 +17,6 @@ import {
   Modal,
   Pressable,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,7 +32,7 @@ export default function Skills() {
 
   // Section visibility toggles
   const [showEmployeeSkills, setShowEmployeeSkills] = useState(true);
-  const [showAllServices, setShowAllServices] = useState(true);
+  const [showAllServices, setShowAllServices] = useState(false);
 
   // Modal & Service detail state
   const [modalVisible, setModalVisible] = useState(false);
@@ -169,7 +168,6 @@ export default function Skills() {
     );
   }
 
-  // Calculate quick metrics for the beauty artist
   const totalServices = employeeSkills.length;
   const avgDuration =
     totalServices > 0
@@ -182,244 +180,242 @@ export default function Skills() {
       : 0;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor="#4F46E5"
-              colors={["#4F46E5"]}
-            />
-          }
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#4F46E5"
+          colors={["#4F46E5"]}
+        />
+      }
+    >
+      {/* TOP HEADER */}
+      <View style={styles.header}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.backButton,
+            pressed && styles.pressedState,
+          ]}
+          onPress={() => router.push("/Home")}
         >
-          {/* TOP HEADER */}
-          <View style={styles.header}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed && styles.pressedState,
-              ]}
-              onPress={() => router.push("/Home")}
-            >
-              <Ionicons name="arrow-back" size={20} color="#4F46E5" />
-            </Pressable>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.title}>Menuja e Shërbimeve</Text>
-              <Text style={styles.subtitle}>
-                Menaxhoni specializimet & trajtimet tuaja
+          <Ionicons name="arrow-back" size={20} color="#4F46E5" />
+        </Pressable>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.title}>Menuja e Shërbimeve</Text>
+          <Text style={styles.subtitle}>
+            Menaxhoni specializimet & trajtimet tuaja
+          </Text>
+        </View>
+        {submitting && (
+          <ActivityIndicator
+            size="small"
+            color="#4F46E5"
+            style={{ marginLeft: "auto" }}
+          />
+        )}
+      </View>
+
+      {/* BEAUTY ARTIST OVERVIEW SUMMARY */}
+      <View style={styles.summaryBar}>
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>{totalServices}</Text>
+          <Text style={styles.summaryLabel}>Shërbime Aktive</Text>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>{avgDuration} min</Text>
+          <Text style={styles.summaryLabel}>Kohëzgjatja Mesatare</Text>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryItem}>
+          <Text style={styles.summaryValue}>
+            {services.length - totalServices}
+          </Text>
+          <Text style={styles.summaryLabel}>Të Disponueshme</Text>
+        </View>
+      </View>
+
+      {/* SECTION 1: ACTIVE BEAUTY SERVICES (PORTFOLIO) */}
+      <View style={styles.sectionContainer}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.dropdownHeader,
+            showEmployeeSkills && styles.dropdownHeaderExpanded,
+            pressed && styles.pressedState,
+          ]}
+          onPress={() => setShowEmployeeSkills(!showEmployeeSkills)}
+        >
+          <View style={styles.dropdownTitleContainer}>
+            <View style={styles.dropdownIconWrapper}>
+              <Ionicons name="cut-outline" size={18} color="#4F46E5" />
+            </View>
+            <View>
+              <Text style={styles.dropdownTitle}>
+                Portofoli Im i Shërbimeve
+              </Text>
+              <Text style={styles.dropdownSub}>
+                {employeeSkills.length} shërbime që ofroni aktualisht
               </Text>
             </View>
-            {submitting && (
-              <ActivityIndicator
-                size="small"
-                color="#4F46E5"
-                style={{ marginLeft: "auto" }}
-              />
+          </View>
+          <Ionicons
+            name={showEmployeeSkills ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="#64748B"
+          />
+        </Pressable>
+
+        {showEmployeeSkills && (
+          <View style={styles.dropdownContentAttached}>
+            {employeeSkills.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <View style={styles.emptyIconContainer}>
+                  <Ionicons name="sparkles-outline" size={32} color="#94A3B8" />
+                </View>
+                <Text style={styles.emptyTitle}>
+                  Nuk keni shtuar asnjë shërbim
+                </Text>
+                <Text style={styles.emptyText}>
+                  Zgjidhni shërbimet nga katalogu i sallonit më poshtë për t'i
+                  aktivizuar në profilin tuaj profesional.
+                </Text>
+              </View>
+            ) : (
+              employeeSkills.map((skill, index) => (
+                <BeautySkillCard
+                  key={`skill-${skill.id}-${index}`}
+                  skill={skill}
+                  submitting={submitting}
+                  onPress={() => loadServiceAttributes(skill)}
+                  onRemove={() =>
+                    handleRemoveSkill(skill.id, skill.emri_sherbimit)
+                  }
+                />
+              ))
             )}
           </View>
-
-          {/* BEAUTY ARTIST OVERVIEW SUMMARY */}
-          <View style={styles.summaryBar}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>{totalServices}</Text>
-              <Text style={styles.summaryLabel}>Shërbime Aktive</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>{avgDuration} min</Text>
-              <Text style={styles.summaryLabel}>Kohëzgjatja Mesatare</Text>
-            </View>
-            <View style={styles.summaryDivider} />
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>
-                {services.length - totalServices}
-              </Text>
-              <Text style={styles.summaryLabel}>Të Disponueshme</Text>
-            </View>
-          </View>
-
-          {/* SECTION 1: ACTIVE BEAUTY SERVICES (PORTFOLIO) */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.dropdownHeader,
-              pressed && styles.pressedState,
-            ]}
-            onPress={() => setShowEmployeeSkills(!showEmployeeSkills)}
-          >
-            <View style={styles.dropdownTitleContainer}>
-              <View style={styles.dropdownIconWrapper}>
-                <Ionicons name="cut-outline" size={18} color="#4F46E5" />
-              </View>
-              <View>
-                <Text style={styles.dropdownTitle}>
-                  Portofoli Im i Shërbimeve
-                </Text>
-                <Text style={styles.dropdownSub}>
-                  {employeeSkills.length} shërbime që ofroni aktualisht
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name={showEmployeeSkills ? "chevron-up" : "chevron-down"}
-              size={20}
-              color="#64748B"
-            />
-          </Pressable>
-
-          {showEmployeeSkills && (
-            <View style={styles.dropdownContent}>
-              {employeeSkills.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <View style={styles.emptyIconContainer}>
-                    <Ionicons
-                      name="sparkles-outline"
-                      size={32}
-                      color="#94A3B8"
-                    />
-                  </View>
-                  <Text style={styles.emptyTitle}>
-                    Nuk keni shtuar asnjë shërbim
-                  </Text>
-                  <Text style={styles.emptyText}>
-                    Zgjidhni shërbimet nga katalogu i sallonit më poshtë për t'i
-                    aktivizuar në profilin tuaj profesional.
-                  </Text>
-                </View>
-              ) : (
-                employeeSkills.map((skill, index) => (
-                  <BeautySkillCard
-                    key={`skill-${skill.id}-${index}`}
-                    skill={skill}
-                    submitting={submitting}
-                    onPress={() => loadServiceAttributes(skill)}
-                    onRemove={() =>
-                      handleRemoveSkill(skill.id, skill.emri_sherbimit)
-                    }
-                  />
-                ))
-              )}
-            </View>
-          )}
-
-          {/* SECTION 2: SALON CATALOG (AVAILABLE SERVICES) */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.dropdownHeader,
-              pressed && styles.pressedState,
-            ]}
-            onPress={() => setShowAllServices(!showAllServices)}
-          >
-            <View style={styles.dropdownTitleContainer}>
-              <View style={styles.dropdownIconWrapper}>
-                <Ionicons name="grid-outline" size={18} color="#4F46E5" />
-              </View>
-              <View>
-                <Text style={styles.dropdownTitle}>Katalogu i Sallonit</Text>
-                <Text style={styles.dropdownSub}>
-                  {services.length} trajtime të gatshme për shtim
-                </Text>
-              </View>
-            </View>
-            <Ionicons
-              name={showAllServices ? "chevron-up" : "chevron-down"}
-              size={20}
-              color="#64748B"
-            />
-          </Pressable>
-
-          {showAllServices && (
-            <View style={styles.dropdownContent}>
-              {services.map((service, index) => {
-                const isAdded = employeeSkills.some((s) => s.ID === service.ID);
-                return (
-                  <AvailableBeautyServiceCard
-                    key={service.ID ? `service-${service.ID}-${index}` : index}
-                    service={service}
-                    isAdded={isAdded}
-                    submitting={submitting}
-                    onPress={() => loadServiceAttributes(service)}
-                    onAdd={() => handleAddSkill(service)}
-                  />
-                );
-              })}
-            </View>
-          )}
-        </ScrollView>
-
-        {/* SERVICE ATTRIBUTES & VARIATIONS MODAL */}
-        <Modal
-          animationType="fade"
-          transparent={true}
-          visible={modalVisible}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalPill} />
-              <View style={styles.modalHeader}>
-                <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text style={styles.modalTitle}>Variacionet & Detajet</Text>
-                  <Text style={styles.modalSubtitle} numberOfLines={1}>
-                    {selectedService?.emri_sherbimit}
-                  </Text>
-                </View>
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.closeBtn,
-                    pressed && styles.pressedState,
-                  ]}
-                  onPress={() => setModalVisible(false)}
-                >
-                  <Ionicons name="close" size={18} color="#64748B" />
-                </Pressable>
-              </View>
-
-              {loadingAttributes ? (
-                <View style={styles.modalLoading}>
-                  <ActivityIndicator size="small" color="#4F46E5" />
-                  <Text style={styles.modalLoadingText}>
-                    Po ngarkohen variacionet e trajtimit...
-                  </Text>
-                </View>
-              ) : attributes.length === 0 ? (
-                <View style={styles.modalEmpty}>
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={36}
-                    color="#94A3B8"
-                  />
-                  <Text style={styles.modalEmptyText}>
-                    Ky shërbim ka vetëm çmimin bazë dhe nuk përmban
-                    nen-variacione.
-                  </Text>
-                </View>
-              ) : (
-                <ScrollView
-                  style={{ maxHeight: 380 }}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {attributes.map((attr, index) => (
-                    <AttributeItem
-                      key={
-                        attr.id_atributit
-                          ? `attr-${attr.id_atributit}-${index}`
-                          : index
-                      }
-                      attr={attr}
-                    />
-                  ))}
-                </ScrollView>
-              )}
-            </View>
-          </View>
-        </Modal>
+        )}
       </View>
-    </SafeAreaView>
+
+      {/* SECTION 2: SALON CATALOG (AVAILABLE SERVICES) */}
+      <View style={styles.sectionContainer}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.dropdownHeader,
+            showAllServices && styles.dropdownHeaderExpanded,
+            pressed && styles.pressedState,
+          ]}
+          onPress={() => setShowAllServices(!showAllServices)}
+        >
+          <View style={styles.dropdownTitleContainer}>
+            <View style={styles.dropdownIconWrapper}>
+              <Ionicons name="grid-outline" size={18} color="#4F46E5" />
+            </View>
+            <View>
+              <Text style={styles.dropdownTitle}>Katalogu i Sallonit</Text>
+              <Text style={styles.dropdownSub}>
+                {services.length} trajtime të gatshme për shtim
+              </Text>
+            </View>
+          </View>
+          <Ionicons
+            name={showAllServices ? "chevron-up" : "chevron-down"}
+            size={20}
+            color="#64748B"
+          />
+        </Pressable>
+
+        {showAllServices && (
+          <View style={styles.dropdownContentAttached}>
+            {services.map((service, index) => {
+              const isAdded = employeeSkills.some((s) => s.ID === service.ID);
+              return (
+                <AvailableBeautyServiceCard
+                  key={service.ID ? `service-${service.ID}-${index}` : index}
+                  service={service}
+                  isAdded={isAdded}
+                  submitting={submitting}
+                  onPress={() => loadServiceAttributes(service)}
+                  onAdd={() => handleAddSkill(service)}
+                />
+              );
+            })}
+          </View>
+        )}
+      </View>
+
+      {/* SERVICE ATTRIBUTES & VARIATIONS MODAL */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalPill} />
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.modalTitle}>Variacionet & Detajet</Text>
+                <Text style={styles.modalSubtitle} numberOfLines={1}>
+                  {selectedService?.emri_sherbimit}
+                </Text>
+              </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.closeBtn,
+                  pressed && styles.pressedState,
+                ]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Ionicons name="close" size={18} color="#64748B" />
+              </Pressable>
+            </View>
+
+            {loadingAttributes ? (
+              <View style={styles.modalLoading}>
+                <ActivityIndicator size="small" color="#4F46E5" />
+                <Text style={styles.modalLoadingText}>
+                  Po ngarkohen variacionet e trajtimit...
+                </Text>
+              </View>
+            ) : attributes.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={36}
+                  color="#94A3B8"
+                />
+                <Text style={styles.modalEmptyText}>
+                  Ky shërbim ka vetëm çmimin bazë dhe nuk përmban
+                  nen-variacione.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                style={{ maxHeight: 380 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {attributes.map((attr, index) => (
+                  <AttributeItem
+                    key={
+                      attr.id_atributit
+                        ? `attr-${attr.id_atributit}-${index}`
+                        : index
+                    }
+                    attr={attr}
+                  />
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </ScrollView>
   );
 }
 
@@ -454,7 +450,7 @@ function BeautySkillCard({
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="sparkles-outline" size={24} color="#94A3B8" />
+              <Ionicons name="sparkles-outline" size={22} color="#94A3B8" />
             </View>
           )}
         </View>
@@ -536,7 +532,7 @@ function AvailableBeautyServiceCard({
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="briefcase-outline" size={24} color="#94A3B8" />
+              <Ionicons name="briefcase-outline" size={22} color="#94A3B8" />
             </View>
           )}
         </View>
@@ -574,7 +570,7 @@ function AvailableBeautyServiceCard({
       >
         <Ionicons
           name={isAdded ? "checkmark" : "add"}
-          size={16}
+          size={15}
           color={isAdded ? "#10B981" : "#FFFFFF"}
         />
         <Text style={[styles.addBtnText, isAdded && styles.addedBtnText]}>
@@ -617,17 +613,17 @@ function AttributeItem({ attr }: { attr: any }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  rootWrapper: {
     flex: 1,
     backgroundColor: "#F8FAFC",
+    justify: "flex-start",
   },
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
   contentContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    padding: 16,
     paddingBottom: 40,
   },
   center: {
@@ -648,8 +644,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
-    marginTop: 6,
+    marginBottom: 12,
+    marginTop: 0,
   },
   backButton: {
     width: 40,
@@ -662,27 +658,29 @@ const styles = StyleSheet.create({
   },
   headerTitleContainer: {
     justifyContent: "center",
+    alignItems: "flex-start",
   },
   title: {
     fontSize: 22,
     fontWeight: "800",
     color: "#0F172A",
     letterSpacing: -0.3,
+    textAlign: "left",
   },
   subtitle: {
     fontSize: 13,
     color: "#64748B",
     marginTop: 2,
+    textAlign: "left",
   },
 
-  /* BEAUTY ARTIST OVERVIEW BAR */
   summaryBar: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 12,
-    marginBottom: 16,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     alignItems: "center",
@@ -692,6 +690,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 2,
+    width: "100%",
   },
   summaryItem: {
     alignItems: "center",
@@ -717,16 +716,12 @@ const styles = StyleSheet.create({
   emptyCard: {
     padding: 24,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
     marginBottom: 10,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    width: "100%",
   },
   emptyIconContainer: {
     width: 56,
@@ -750,7 +745,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  /* DROPDOWNS & CARDS */
+  /* CONNECTED SECTION & UNIFIED PANEL DROPDOWN STYLES */
+  sectionContainer: {
+    marginTop: 8,
+    marginBottom: 6,
+    width: "100%",
+    alignItems: "stretch",
+  },
   dropdownHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -758,7 +759,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     padding: 16,
     borderRadius: 14,
-    marginTop: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#0F172A",
@@ -766,6 +766,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 6,
     elevation: 2,
+    width: "100%",
+  },
+  dropdownHeaderExpanded: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
+  },
+  dropdownContentAttached: {
+    backgroundColor: "#F8FAFC",
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 14,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 2,
+    width: "100%",
+    alignItems: "stretch",
   },
   dropdownTitleContainer: {
     flexDirection: "row",
@@ -784,30 +803,52 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
     color: "#0F172A",
+    textAlign: "left",
   },
   dropdownSub: {
     fontSize: 12,
     color: "#64748B",
     marginTop: 1,
-  },
-  dropdownContent: {
-    marginTop: 10,
+    textAlign: "left",
   },
 
+  /* UNIFIED LIST CARDS */
   skillCard: {
     flexDirection: "row",
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 12,
+    padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     alignItems: "center",
     shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+    width: "100%",
+  },
+  card: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.02,
+    shadowRadius: 4,
+    elevation: 1,
+    width: "100%",
+  },
+  cardContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerRow: {
     flexDirection: "row",
@@ -876,29 +917,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF2F2",
   },
 
-  card: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    alignItems: "center",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  cardContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-  },
   imageContainer: {
-    width: 58,
-    height: 58,
+    width: 54,
+    height: 54,
     borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#F1F5F9",
@@ -917,17 +938,20 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     marginLeft: 12,
+    alignItems: "flex-start",
   },
   name: {
     fontSize: 15,
     fontWeight: "700",
     color: "#0F172A",
     marginBottom: 2,
+    textAlign: "left",
   },
   description: {
     fontSize: 12,
     color: "#64748B",
     lineHeight: 16,
+    textAlign: "left",
   },
   detailRow: {
     flexDirection: "row",
@@ -1002,12 +1026,14 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     color: "#0F172A",
+    textAlign: "left",
   },
   modalSubtitle: {
     fontSize: 13,
     color: "#4F46E5",
     fontWeight: "600",
     marginTop: 2,
+    textAlign: "left",
   },
   closeBtn: {
     width: 32,
@@ -1043,6 +1069,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    width: "100%",
   },
   attrHeader: {
     flexDirection: "row",
@@ -1054,12 +1081,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#0F172A",
+    textAlign: "left",
   },
   attrDesc: {
     fontSize: 12,
     color: "#64748B",
     marginTop: 2,
     marginBottom: 8,
+    textAlign: "left",
   },
   attrFooter: {
     flexDirection: "row",
