@@ -2,6 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -17,10 +18,41 @@ import {
   setAvailableDates,
   updateDates,
 } from "@/javascript/employees/AvailableDates";
+import { getSkills } from "@/javascript/employees/skillsAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 // --- Types & Interfaces ---
+
+export interface ServiceAttribute {
+  id_atributit: number;
+  kohezgjatja: number;
+  opsioni: string;
+  pershkrimi: string;
+  qmimi: number;
+  zbritja: number;
+}
+
+export interface ServiceDetail {
+  ID: number;
+  emri_sherbimit: string;
+  kohezgjatja: number;
+  qmimi_baze: number;
+  zbritja: number;
+  pershkrimi: string;
+  imagepath?: string;
+  created_at: string;
+  updated_at: string;
+  atributet: ServiceAttribute[];
+}
+
+export interface EmployeeService {
+  id: number;
+  id_employee: number;
+  id_service: number;
+  service: ServiceDetail;
+}
+
 interface AvailabilityDetail {
   day_of_week: number;
   start_time: string;
@@ -34,6 +66,7 @@ interface AvailabilityItem {
   start_date: string;
   end_date: string;
   availabilityDetails: AvailabilityDetail[];
+  availableSkills?: number[];
 }
 
 interface DaySetup {
@@ -140,8 +173,18 @@ export default function Availability() {
     return normalizeToMidnight(d);
   });
 
-  const [availableDays, setAvailableDays] = useState<number[]>([]);
+  const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
 
+  // Toggle skill selection on click
+  const toggleSkillSelection = (id: number) => {
+    setSelectedSkillIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const [availableDays, setAvailableDays] = useState<number[]>([]);
+  const [skills, setSkills] = useState();
+  const [showSkillsForm, setSkillsForm] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAvailability();
@@ -171,6 +214,9 @@ export default function Availability() {
     try {
       const data = await getAvailability();
       setAvailability(data || []);
+
+      const sk = await getSkills();
+      setSkills(sk || []);
     } catch (e) {
       console.log(e);
     } finally {
@@ -209,7 +255,10 @@ export default function Availability() {
           pause_start: day.pause_start,
           pause_end: day.pause_end,
         })),
+      availableSkills: selectedSkillIds,
     };
+
+    console.log("Submitting Payload:", JSON.stringify(data, null, 2));
 
     try {
       const message = await setAvailableDates(data);
@@ -234,6 +283,7 @@ export default function Availability() {
         pause_start: d.pause_start || "12:00:00",
         pause_end: d.pause_end || "13:00:00",
       })),
+      availableSkills: item.availableSkills || [],
     });
   };
 
@@ -620,6 +670,105 @@ export default function Availability() {
                           </View>
                         ))}
 
+                        {item?.sherbimetDisplay &&
+                          item.sherbimetDisplay.length > 0 && (
+                            <View style={styles.skillsContainer}>
+                              <View style={styles.skillsHeader}>
+                                <Ionicons
+                                  name="sparkles-outline"
+                                  size={16}
+                                  color="#4F46E5"
+                                />
+                                <Text style={styles.skillsTitle}>
+                                  Shërbimet e Ofruara
+                                </Text>
+                                <View style={styles.countBadge}>
+                                  <Text style={styles.countBadgeText}>
+                                    {item.sherbimetDisplay.length}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <View style={styles.servicesList}>
+                                {item.sherbimetDisplay.map((sherbi) => {
+                                  // Resolve base64 string from sherbi.imagepath or fallback to sherbi.foto_base64
+                                  const rawImageData = sherbi.imagePath;
+
+                                  const imageUri = rawImageData
+                                    ? rawImageData.startsWith("data:image")
+                                      ? rawImageData
+                                      : `data:image/jpeg;base64,${rawImageData}`
+                                    : null;
+
+                                  return (
+                                    <View
+                                      key={sherbi.ID || sherbi.id}
+                                      style={styles.serviceCard}
+                                    >
+                                      {/* Render Image or Fallback */}
+                                      {imageUri ? (
+                                        <Image
+                                          source={{ uri: imageUri }}
+                                          style={styles.serviceImage}
+                                          resizeMode="cover"
+                                        />
+                                      ) : (
+                                        <View
+                                          style={styles.serviceImagePlaceholder}
+                                        >
+                                          <Ionicons
+                                            name="construct-outline"
+                                            size={20}
+                                            color="#4F46E5"
+                                          />
+                                        </View>
+                                      )}
+
+                                      {/* Service Details */}
+                                      <View style={styles.serviceInfo}>
+                                        <Text
+                                          style={styles.serviceName}
+                                          numberOfLines={1}
+                                        >
+                                          {sherbi.emri_sherbimit}
+                                        </Text>
+
+                                        <View style={styles.metaRow}>
+                                          <View style={styles.metaBadge}>
+                                            <Ionicons
+                                              name="time-outline"
+                                              size={12}
+                                              color="#64748B"
+                                            />
+                                            <Text style={styles.metaText}>
+                                              {sherbi.kohezgjatja} min
+                                            </Text>
+                                          </View>
+
+                                          <View
+                                            style={[
+                                              styles.metaBadge,
+                                              styles.priceBadge,
+                                            ]}
+                                          >
+                                            <Ionicons
+                                              name="pricetag-outline"
+                                              size={12}
+                                              color="#059669"
+                                            />
+                                            <Text style={styles.priceText}>
+                                              {sherbi.qmimi_baze} €
+                                            </Text>
+                                          </View>
+                                        </View>
+                                      </View>
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          )}
+
                         <View style={styles.actionButtons}>
                           <Pressable
                             style={styles.editButton}
@@ -663,6 +812,7 @@ export default function Availability() {
         <Pressable
           style={[
             styles.setupToggleFormButton,
+            styles.skillsSelectButton,
             showSetupForm && styles.setupToggleFormButtonActive,
           ]}
           onPress={() => setShowSetupForm(!showSetupForm)}
@@ -727,6 +877,91 @@ export default function Availability() {
               </View>
             </View>
 
+            <Pressable
+              style={[
+                styles.setupToggleFormButton,
+                styles.skillsSelectButton,
+                showSkillsForm && styles.setupToggleFormButtonActive,
+              ]}
+              onPress={() => setSkillsForm(!showSkillsForm)}
+            >
+              <View style={styles.headerLeft}>
+                <Text style={styles.setupToggleTitle}>Zgjedh Shërbimet</Text>
+                <Text style={styles.setupToggleSubtitle}>
+                  Zgjidhni shërbimet apo aftësitë e aplikueshme
+                </Text>
+              </View>
+              <Ionicons
+                name={showSkillsForm ? "chevron-up" : "chevron-down"}
+                size={22}
+                color="#4F46E5"
+              />
+            </Pressable>
+            {showSkillsForm && (
+              <View style={styles.skillsListContainer}>
+                {skills.map((item: EmployeeService) => {
+                  const { service } = item;
+                  const isSelected = selectedSkillIds.includes(item.id); // Check if skill ID is selected
+
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={[
+                        styles.serviceCard,
+                        isSelected && styles.serviceCardSelected, // Highlight selected card
+                      ]}
+                      onPress={() => toggleSkillSelection(item.id)}
+                    >
+                      <View style={styles.serviceMainRow}>
+                        {/* CHECKBOX INDICATOR */}
+                        <Ionicons
+                          name={isSelected ? "checkbox" : "square-outline"}
+                          size={22}
+                          color={isSelected ? "#4F46E5" : "#94A3B8"}
+                          style={{ alignSelf: "center", marginRight: 4 }}
+                        />
+
+                        {/* SERVICE IMAGE */}
+                        {service.imagepath ? (
+                          <Image
+                            source={{
+                              uri: service.imagepath.startsWith("data:image")
+                                ? service.imagepath
+                                : `data:image/jpeg;base64,${service.imagepath}`,
+                            }}
+                            style={styles.serviceImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.serviceImage,
+                              styles.imagePlaceholder,
+                            ]}
+                          >
+                            <Ionicons
+                              name="image-outline"
+                              size={24}
+                              color="#94A3B8"
+                            />
+                          </View>
+                        )}
+
+                        {/* SERVICE DETAILS */}
+                        <View style={styles.serviceContent}>
+                          <Text style={styles.serviceTitle}>
+                            {service.emri_sherbimit}
+                          </Text>
+                          <Text style={styles.metaText}>
+                            {service.kohezgjatja} min
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
             {/* WORKING DAYS */}
             <Text style={[styles.innerSectionTitle, { marginTop: 24 }]}>
               Konfigurimi i Ditëve të Punës
@@ -889,7 +1124,6 @@ export default function Availability() {
     </ScrollView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -968,6 +1202,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#1E293B",
+  },
+  skillsSelectButton: {
+    marginTop: 16,
   },
   editContainer: {
     marginTop: 12,
@@ -1190,5 +1427,217 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
     fontSize: 15,
+  },
+  skillsListContainer: {
+    marginTop: 16,
+    gap: 12,
+  },
+  serviceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  serviceCardSelected: {
+    borderColor: "#4F46E5",
+    borderWidth: 2,
+    backgroundColor: "#F5F3FF",
+  },
+  serviceMainRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  serviceImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: "#E2E8F0",
+  },
+  imagePlaceholder: {
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  serviceContent: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  serviceTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#0F172A",
+    textTransform: "capitalize",
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 3,
+  },
+  metaText: {
+    fontSize: 12,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  serviceDescription: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 6,
+  },
+  priceText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#4F46E5",
+  },
+  originalPriceText: {
+    fontSize: 12,
+    color: "#94A3B8",
+    textDecorationLine: "line-through",
+  },
+  discountBadge: {
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  discountBadgeText: {
+    color: "#EF4444",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  attributesSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  attributesSectionTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  attributeCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  attributeMainInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  attributeLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  attributeName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1E293B",
+  },
+  attributeDuration: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  attributePriceContainer: {
+    alignItems: "flex-end",
+  },
+  attributePrice: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  attributeOriginalPrice: {
+    fontSize: 10,
+    color: "#94A3B8",
+    textDecorationLine: "line-through",
+  },
+  attributeDescription: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  skillsContainer: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  skillsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 6,
+  },
+  skillsTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  countBadge: {
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: "auto",
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4F46E5",
+  },
+  servicesList: {
+    gap: 10,
+  },
+  serviceImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  serviceInfo: {
+    flex: 1,
+    marginLeft: 10,
+    justifyContent: "center",
+  },
+  serviceName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#0F172A",
+    marginBottom: 4,
+  },
+  metaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  priceBadge: {
+    borderColor: "#A7F3D0",
+    backgroundColor: "#ECFDF5",
   },
 });
