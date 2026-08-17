@@ -3,12 +3,14 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -183,8 +185,10 @@ export default function Availability() {
   };
 
   const [availableDays, setAvailableDays] = useState<number[]>([]);
-  const [skills, setSkills] = useState();
+
+  const [skills, setSkills] = useState<EmployeeService[]>([]);
   const [showSkillsForm, setSkillsForm] = useState(false);
+  const [showSkillPicker, setShowSkillPicker] = useState(false);
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadAvailability();
@@ -268,6 +272,36 @@ export default function Availability() {
     } catch (error) {
       console.log(error);
     }
+  };
+
+  const addSkill = (skillId: number) => {
+    setEditedData((prev) => {
+      if (!prev) return prev;
+
+      const currentSkills = prev.availableSkills ?? [];
+
+      if (currentSkills.includes(skillId)) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        availableSkills: [...currentSkills, skillId],
+      };
+    });
+  };
+
+  const removeSkill = (skillId: number) => {
+    setEditedData((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        availableSkills: (prev.availableSkills ?? []).filter(
+          (id) => id !== skillId,
+        ),
+      };
+    });
   };
 
   const startEditing = (item: AvailabilityItem) => {
@@ -485,6 +519,10 @@ export default function Availability() {
                   {isSavedCardExpanded &&
                     (isEditing ? (
                       <View style={styles.editContainer}>
+                        {/* ========================= */}
+                        {/* AVAILABILITY DETAILS */}
+                        {/* ========================= */}
+
                         {editedData?.availabilityDetails.map((d, index) => {
                           const workStart = parseTimeString(d.start_time);
                           const workEnd = parseTimeString(d.end_time);
@@ -622,6 +660,71 @@ export default function Availability() {
                             </View>
                           );
                         })}
+
+                        {/* ========================= */}
+                        {/* AVAILABLE SKILLS */}
+                        {/* ========================= */}
+
+                        <View style={styles.skillsSection}>
+                          <View style={styles.skillsHeader}>
+                            <Text style={styles.sectionTitle}>
+                              Available Skills
+                            </Text>
+
+                            <TouchableOpacity
+                              style={styles.addSkillButton}
+                              onPress={() => setShowSkillPicker(true)}
+                            >
+                              <Text style={styles.addSkillButtonText}>
+                                + Add Skill
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {editedData?.availableSkills?.length === 0 ? (
+                            <Text style={styles.noSkillsText}>
+                              No skills selected
+                            </Text>
+                          ) : (
+                            editedData?.availableSkills?.map((skillId) => {
+                              const skill = skills?.find(
+                                (skill: any) => skill.id === skillId,
+                              );
+
+                              return (
+                                <View key={skillId} style={styles.skillRow}>
+                                  <Text style={styles.skillName}>
+                                    {skill?.services?.emri_sherbimit ??
+                                      `Skill ${skillId}`}
+                                  </Text>
+
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      if (!editedData) return;
+
+                                      setEditedData({
+                                        ...editedData,
+                                        availableSkills:
+                                          editedData.availableSkills.filter(
+                                            (id) => id !== skillId,
+                                          ),
+                                      });
+                                    }}
+                                    style={styles.removeSkillButton}
+                                  >
+                                    <Text style={styles.removeSkillText}>
+                                      Remove
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              );
+                            })
+                          )}
+                        </View>
+
+                        {/* ========================= */}
+                        {/* SAVE / CANCEL */}
+                        {/* ========================= */}
 
                         <View style={styles.buttonRow}>
                           <Pressable
@@ -1120,6 +1223,54 @@ export default function Availability() {
             </Pressable>
           </View>
         )}
+
+        <Modal
+          visible={showSkillPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowSkillPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.skillModal}>
+              <Text style={styles.modalTitle}>Add Available Skill</Text>
+
+              <ScrollView>
+                {skills.map((skill) => {
+                  const selected =
+                    editedData?.availableSkills?.includes(skill.id) ?? false;
+
+                  return (
+                    <TouchableOpacity
+                      key={skill.id}
+                      disabled={selected}
+                      style={[
+                        styles.skillOption,
+                        selected && styles.skillOptionSelected,
+                      ]}
+                      onPress={() => {
+                        addSkill(skill.id);
+                        setShowSkillPicker(false);
+                      }}
+                    >
+                      <Text style={styles.skillOptionText}>
+                        {skill.service?.emri_sherbimit ?? `Skill ${skill.id}`}
+                      </Text>
+
+                      {selected && <Text>✓</Text>}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowSkillPicker(false)}
+              >
+                <Text>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </ScrollView>
   );
@@ -1639,5 +1790,130 @@ const styles = StyleSheet.create({
   priceBadge: {
     borderColor: "#A7F3D0",
     backgroundColor: "#ECFDF5",
+  },
+
+  /*
+
+
+ */
+
+  skillsSection: {
+    marginTop: 16,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+
+  addSkillButton: {
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+  },
+
+  addSkillButtonText: {
+    color: "#4F46E5",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  noSkillsText: {
+    fontSize: 13,
+    color: "#94A3B8",
+    fontStyle: "italic",
+    paddingVertical: 8,
+  },
+
+  skillRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  skillName: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginRight: 10,
+  },
+
+  removeSkillButton: {
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+
+  removeSkillText: {
+    color: "#EF4444",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    justifyContent: "flex-end",
+  },
+
+  skillModal: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "75%",
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginBottom: 16,
+  },
+
+  skillOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 10,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  skillOptionSelected: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#A5B4FC",
+  },
+
+  skillOptionText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#1E293B",
+  },
+
+  closeButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F1F5F9",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 12,
   },
 });
