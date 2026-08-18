@@ -37,6 +37,7 @@ export interface ServiceAttribute {
 
 export interface ServiceDetail {
   ID: number;
+  avaSkillId: number;
   emri_sherbimit: string;
   kohezgjatja: number;
   qmimi_baze: number;
@@ -69,6 +70,7 @@ interface AvailabilityItem {
   end_date: string;
   availabilityDetails: AvailabilityDetail[];
   availableSkills?: number[];
+  sherbimetDisplay: ServiceDetail[];
 }
 
 interface DaySetup {
@@ -280,17 +282,35 @@ export default function Availability() {
 
       const currentSkills = prev.availableSkills ?? [];
 
+      // Already selected
       if (currentSkills.includes(skillId)) {
         return prev;
       }
 
+      // Find the selected skill from the available skills
+      const selectedSkill = skills.find((skill: any) => skill.id === skillId);
+
+      if (!selectedSkill) {
+        return prev;
+      }
+
+      // Create the display object
+      const serviceDetail = {
+        ...selectedSkill.service,
+        avaSkillId: skillId,
+      };
+
       return {
         ...prev,
+
+        // This is what gets sent to the backend
         availableSkills: [...currentSkills, skillId],
+
+        // This is only used for displaying the selected skills
+        sherbimetDisplay: [...(prev.sherbimetDisplay ?? []), serviceDetail],
       };
     });
   };
-
   const removeSkill = (skillId: number) => {
     setEditedData((prev) => {
       if (!prev) return prev;
@@ -306,10 +326,10 @@ export default function Availability() {
 
   const startEditing = (item: AvailabilityItem) => {
     setEditingAvailability(item.id_availability);
-
     setEditedData({
       start_date: item.start_date,
       end_date: item.end_date,
+
       availabilityDetails: item.availabilityDetails.map((d) => ({
         day_of_week: d.day_of_week,
         start_time: d.start_time,
@@ -317,7 +337,9 @@ export default function Availability() {
         pause_start: d.pause_start || "12:00:00",
         pause_end: d.pause_end || "13:00:00",
       })),
+
       availableSkills: item.availableSkills || [],
+      sherbimetDisplay: item.sherbimetDisplay || [],
     });
   };
 
@@ -325,12 +347,29 @@ export default function Availability() {
     if (!editedData || !editingAvailability) return;
 
     try {
-      await updateDates(editedData, editingAvailability);
+      const payload = {
+        availabilityDetails: editedData.availabilityDetails.map((d) => ({
+          day_of_week: d.day_of_week,
+          start_time: d.start_time,
+          end_time: d.end_time,
+          pause_start: d.pause_start,
+          pause_end: d.pause_end,
+        })),
+
+        availableSkills: editedData.availableSkills ?? [],
+      };
+
+      console.log("UPDATE PAYLOAD:", payload);
+
+      await updateDates(payload, editingAvailability);
 
       setAvailability((prevList) =>
         prevList.map((item) =>
           item.id_availability === editingAvailability
-            ? { ...item, ...editedData }
+            ? {
+                ...item,
+                ...editedData,
+              }
             : item,
         ),
       );
@@ -415,6 +454,45 @@ export default function Availability() {
     }
   };
 
+  const toggleSkill = (skillId: number) => {
+    setEditedData((prev) => {
+      if (!prev) return prev;
+
+      const currentSkills = prev.availableSkills ?? [];
+      const isSelected = currentSkills.includes(skillId);
+
+      const selectedSkill = skills.find(
+        (skill: EmployeeService) => skill.id === skillId,
+      );
+
+      if (!selectedSkill) {
+        return prev;
+      }
+
+      if (isSelected) {
+        // Deselect
+        return {
+          ...prev,
+          availableSkills: currentSkills.filter((id) => id !== skillId),
+          sherbimetDisplay: (prev.sherbimetDisplay ?? []).filter(
+            (service) => service.avaSkillId !== skillId,
+          ),
+        };
+      }
+
+      // Select
+      const serviceDetail: ServiceDetail = {
+        ...selectedSkill.service,
+        avaSkillId: skillId,
+      };
+
+      return {
+        ...prev,
+        availableSkills: [...currentSkills, skillId],
+        sherbimetDisplay: [...(prev.sherbimetDisplay ?? []), serviceDetail],
+      };
+    });
+  };
   // 2. END DATE ONCHANGE
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     if (event?.type === "dismissed" || !selectedDate) return;
@@ -680,45 +758,68 @@ export default function Availability() {
                               </Text>
                             </TouchableOpacity>
                           </View>
-
-                          {editedData?.availableSkills?.length === 0 ? (
+                          {editedData?.sherbimetDisplay?.length === 0 ? (
                             <Text style={styles.noSkillsText}>
                               No skills selected
                             </Text>
                           ) : (
-                            editedData?.availableSkills?.map((skillId) => {
-                              const skill = skills?.find(
-                                (skill: any) => skill.id === skillId,
-                              );
+                            editedData.sherbimetDisplay.map((skill) => (
+                              <View
+                                key={skill.avaSkillId}
+                                style={styles.skillRow}
+                              >
+                                {skill.imagePath ? (
+                                  <Image
+                                    source={{
+                                      uri: `data:image/avif;base64,${skill.imagePath}`,
+                                    }}
+                                    style={styles.serviceImage}
+                                    resizeMode="cover"
+                                  />
+                                ) : (
+                                  <View style={styles.skillImagePlaceholder}>
+                                    <Text>No Image</Text>
+                                  </View>
+                                )}
 
-                              return (
-                                <View key={skillId} style={styles.skillRow}>
+                                <View style={styles.skillInfo}>
                                   <Text style={styles.skillName}>
-                                    {skill?.services?.emri_sherbimit ??
-                                      `Skill ${skillId}`}
+                                    {skill.emri_sherbimit}
                                   </Text>
 
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      if (!editedData) return;
-
-                                      setEditedData({
-                                        ...editedData,
-                                        availableSkills:
-                                          editedData.availableSkills.filter(
-                                            (id) => id !== skillId,
-                                          ),
-                                      });
-                                    }}
-                                    style={styles.removeSkillButton}
-                                  >
-                                    <Text style={styles.removeSkillText}>
-                                      Remove
-                                    </Text>
-                                  </TouchableOpacity>
+                                  <Text style={styles.skillPrice}>
+                                    €{skill.qmimi_baze ?? 0}
+                                  </Text>
                                 </View>
-                              );
-                            })
+
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    if (!editedData) return;
+
+                                    setEditedData({
+                                      ...editedData,
+
+                                      availableSkills:
+                                        editedData.availableSkills.filter(
+                                          (id) => id !== skill.avaSkillId,
+                                        ),
+
+                                      sherbimetDisplay:
+                                        editedData.sherbimetDisplay.filter(
+                                          (service) =>
+                                            service.avaSkillId !==
+                                            skill.avaSkillId,
+                                        ),
+                                    });
+                                  }}
+                                  style={styles.removeSkillButton}
+                                >
+                                  <Text style={styles.removeSkillText}>
+                                    Remove
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            ))
                           )}
                         </View>
 
@@ -1232,29 +1333,44 @@ export default function Availability() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.skillModal}>
-              <Text style={styles.modalTitle}>Add Available Skill</Text>
+              <Text style={styles.modalTitle}>Available Skills</Text>
 
               <ScrollView>
-                {skills.map((skill) => {
+                {skills.map((skill: EmployeeService) => {
                   const selected =
                     editedData?.availableSkills?.includes(skill.id) ?? false;
 
                   return (
                     <TouchableOpacity
                       key={skill.id}
-                      disabled={selected}
                       style={[
                         styles.skillOption,
                         selected && styles.skillOptionSelected,
                       ]}
-                      onPress={() => {
-                        addSkill(skill.id);
-                        setShowSkillPicker(false);
-                      }}
+                      onPress={() => toggleSkill(skill.id)}
                     >
-                      <Text style={styles.skillOptionText}>
-                        {skill.service?.emri_sherbimit ?? `Skill ${skill.id}`}
-                      </Text>
+                      {skill.service?.imagePath ? (
+                        <Image
+                          source={{
+                            uri: `data:image/avif;base64,${skill.service.imagePath}`,
+                          }}
+                          style={styles.skillOptionImage}
+                        />
+                      ) : (
+                        <View style={styles.skillOptionImagePlaceholder}>
+                          <Text>No Image</Text>
+                        </View>
+                      )}
+
+                      <View style={styles.skillOptionInfo}>
+                        <Text style={styles.skillOptionText}>
+                          {skill.service?.emri_sherbimit ?? `Skill ${skill.id}`}
+                        </Text>
+
+                        {skill.service?.qmimi_baze != null && (
+                          <Text>€{skill.service.qmimi_baze}</Text>
+                        )}
+                      </View>
 
                       {selected && <Text>✓</Text>}
                     </TouchableOpacity>
@@ -1266,7 +1382,7 @@ export default function Availability() {
                 style={styles.closeButton}
                 onPress={() => setShowSkillPicker(false)}
               >
-                <Text>Close</Text>
+                <Text>Done</Text>
               </TouchableOpacity>
             </View>
           </View>
