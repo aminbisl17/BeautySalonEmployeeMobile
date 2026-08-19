@@ -359,8 +359,6 @@ export default function Availability() {
         availableSkills: editedData.availableSkills ?? [],
       };
 
-      console.log("UPDATE PAYLOAD:", payload);
-
       await updateDates(payload, editingAvailability);
 
       setAvailability((prevList) =>
@@ -768,10 +766,10 @@ export default function Availability() {
                                 key={skill.avaSkillId}
                                 style={styles.skillRow}
                               >
-                                {skill.imagePath ? (
+                                {skill.imagepath ? (
                                   <Image
                                     source={{
-                                      uri: `data:image/avif;base64,${skill.imagePath}`,
+                                      uri: `data:image/avif;base64,${skill.imagepath}`,
                                     }}
                                     style={styles.serviceImage}
                                     resizeMode="cover"
@@ -895,13 +893,17 @@ export default function Availability() {
 
                               <View style={styles.servicesList}>
                                 {item.sherbimetDisplay.map((sherbi) => {
-                                  // Resolve base64 string from sherbi.imagepath or fallback to sherbi.foto_base64
-                                  const rawImageData = sherbi.imagePath;
+                                  const rawImageData =
+                                    sherbi.imagePath || sherbi.imagepath;
+                                  // sherbi.foto_base64 ||
+                                  sherbi.service?.imagePath ||
+                                    sherbi.service?.imagepath;
 
+                                  // 3. Match the working image format used in your modal (AVIF fallback)
                                   const imageUri = rawImageData
                                     ? rawImageData.startsWith("data:image")
                                       ? rawImageData
-                                      : `data:image/jpeg;base64,${rawImageData}`
+                                      : `data:image/avif;base64,${rawImageData.trim()}`
                                     : null;
 
                                   return (
@@ -1333,9 +1335,17 @@ export default function Availability() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.skillModal}>
-              <Text style={styles.modalTitle}>Available Skills</Text>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Available Skills</Text>
+                <Text style={styles.modalSubtitle}>
+                  Select skills to assign
+                </Text>
+              </View>
 
-              <ScrollView>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContent}
+              >
                 {skills.map((skill: EmployeeService) => {
                   const selected =
                     editedData?.availableSkills?.includes(skill.id) ?? false;
@@ -1343,22 +1353,29 @@ export default function Availability() {
                   return (
                     <TouchableOpacity
                       key={skill.id}
+                      activeOpacity={0.7}
                       style={[
                         styles.skillOption,
                         selected && styles.skillOptionSelected,
                       ]}
                       onPress={() => toggleSkill(skill.id)}
                     >
-                      {skill.service?.imagePath ? (
+                      {/* Replace your current service image block with this */}
+                      {skill.service?.imagepath ? (
                         <Image
                           source={{
-                            uri: `data:image/avif;base64,${skill.service.imagePath}`,
+                            uri: skill.service.imagepath.startsWith("data:")
+                              ? skill.service.imagepath
+                              : `data:image/jpeg;base64,${skill.service.imagepath.trim()}`,
                           }}
-                          style={styles.skillOptionImage}
+                          style={styles.serviceImage} // Ensure explicit dimensions are applied
+                          resizeMode="cover"
                         />
                       ) : (
-                        <View style={styles.skillOptionImagePlaceholder}>
-                          <Text>No Image</Text>
+                        <View
+                          style={[styles.serviceImage, styles.imagePlaceholder]}
+                        >
+                          <Text style={styles.placeholderText}>No Image</Text>
                         </View>
                       )}
 
@@ -1368,11 +1385,22 @@ export default function Availability() {
                         </Text>
 
                         {skill.service?.qmimi_baze != null && (
-                          <Text>€{skill.service.qmimi_baze}</Text>
+                          <Text style={styles.skillOptionPrice}>
+                            €{skill.service.qmimi_baze}
+                          </Text>
                         )}
                       </View>
 
-                      {selected && <Text>✓</Text>}
+                      <View
+                        style={[
+                          styles.checkbox,
+                          selected && styles.checkboxSelected,
+                        ]}
+                      >
+                        {selected && (
+                          <Text style={styles.checkmarkText}>✓</Text>
+                        )}
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -1380,9 +1408,10 @@ export default function Availability() {
 
               <TouchableOpacity
                 style={styles.closeButton}
+                activeOpacity={0.8}
                 onPress={() => setShowSkillPicker(false)}
               >
-                <Text>Done</Text>
+                <Text style={styles.closeButtonText}>Done</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1391,6 +1420,7 @@ export default function Availability() {
     </ScrollView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1907,19 +1937,12 @@ const styles = StyleSheet.create({
     borderColor: "#A7F3D0",
     backgroundColor: "#ECFDF5",
   },
-
-  /*
-
-
- */
-
   skillsSection: {
     marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
-
   addSkillButton: {
     backgroundColor: "#EEF2FF",
     paddingHorizontal: 12,
@@ -1928,20 +1951,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#C7D2FE",
   },
-
   addSkillButtonText: {
     color: "#4F46E5",
     fontSize: 12,
     fontWeight: "600",
   },
-
   noSkillsText: {
     fontSize: 13,
     color: "#94A3B8",
     fontStyle: "italic",
     paddingVertical: 8,
   },
-
   skillRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1954,7 +1974,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
   skillName: {
     flex: 1,
     fontSize: 13,
@@ -1962,7 +1981,6 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     marginRight: 10,
   },
-
   removeSkillButton: {
     paddingHorizontal: 9,
     paddingVertical: 6,
@@ -1971,65 +1989,140 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FECACA",
   },
-
   removeSkillText: {
     color: "#EF4444",
     fontSize: 11,
     fontWeight: "600",
   },
 
+  /* --- MODAL STYLES (ENHANCED) --- */
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
     justifyContent: "flex-end",
   },
-
   skillModal: {
     backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: "75%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 24,
+    maxHeight: "80%",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
   },
-
+  modalHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
     color: "#0F172A",
     marginBottom: 16,
   },
-
+  scrollContent: {
+    paddingBottom: 8,
+  },
   skillOption: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: "#F1F5F9",
+  },
+  skillOptionSelected: {
+    backgroundColor: "#EEF2FF",
+    borderColor: "#6366F1",
+  },
+  skillOptionImage: {
+    width: 44,
+    height: 44,
     borderRadius: 10,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    marginBottom: 8,
+    backgroundColor: "#E2E8F0",
+  },
+  skillOptionImagePlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-
-  skillOptionSelected: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#A5B4FC",
+  placeholderText: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#94A3B8",
+    textAlign: "center",
   },
-
-  skillOptionText: {
+  skillOptionInfo: {
     flex: 1,
-    fontSize: 14,
-    fontWeight: "500",
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  skillOptionText: {
+    fontSize: 15,
+    fontWeight: "600",
     color: "#1E293B",
   },
-
+  skillOptionTextSelected: {
+    color: "#4338CA",
+  },
+  skillOptionPrice: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4F46E5",
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#CBD5E1",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+  },
+  checkboxSelected: {
+    backgroundColor: "#4F46E5",
+    borderColor: "#4F46E5",
+  },
+  checkmark: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+    lineHeight: 14,
+  },
   closeButton: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F1F5F9",
-    paddingVertical: 12,
-    borderRadius: 10,
+    backgroundColor: "#4F46E5",
+    paddingVertical: 14,
+    borderRadius: 12,
     marginTop: 12,
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  closeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });
