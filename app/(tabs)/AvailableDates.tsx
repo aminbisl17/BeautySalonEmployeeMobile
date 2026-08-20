@@ -43,6 +43,7 @@ export interface ServiceDetail {
   qmimi_baze: number;
   zbritja: number;
   pershkrimi: string;
+  imagePath?: string;
   imagepath?: string;
   created_at: string;
   updated_at: string;
@@ -187,7 +188,7 @@ export default function Availability() {
   };
 
   const [availableDays, setAvailableDays] = useState<number[]>([]);
-
+  const [activeTab, setActiveTab] = useState("days"); // 'days' or 'skills'
   const [skills, setSkills] = useState<EmployeeService[]>([]);
   const [showSkillsForm, setSkillsForm] = useState(false);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
@@ -274,54 +275,6 @@ export default function Availability() {
     } catch (error) {
       console.log(error);
     }
-  };
-
-  const addSkill = (skillId: number) => {
-    setEditedData((prev) => {
-      if (!prev) return prev;
-
-      const currentSkills = prev.availableSkills ?? [];
-
-      // Already selected
-      if (currentSkills.includes(skillId)) {
-        return prev;
-      }
-
-      // Find the selected skill from the available skills
-      const selectedSkill = skills.find((skill: any) => skill.id === skillId);
-
-      if (!selectedSkill) {
-        return prev;
-      }
-
-      // Create the display object
-      const serviceDetail = {
-        ...selectedSkill.service,
-        avaSkillId: skillId,
-      };
-
-      return {
-        ...prev,
-
-        // This is what gets sent to the backend
-        availableSkills: [...currentSkills, skillId],
-
-        // This is only used for displaying the selected skills
-        sherbimetDisplay: [...(prev.sherbimetDisplay ?? []), serviceDetail],
-      };
-    });
-  };
-  const removeSkill = (skillId: number) => {
-    setEditedData((prev) => {
-      if (!prev) return prev;
-
-      return {
-        ...prev,
-        availableSkills: (prev.availableSkills ?? []).filter(
-          (id) => id !== skillId,
-        ),
-      };
-    });
   };
 
   const startEditing = (item: AvailabilityItem) => {
@@ -596,235 +549,280 @@ export default function Availability() {
                     (isEditing ? (
                       <View style={styles.editContainer}>
                         {/* ========================= */}
-                        {/* AVAILABILITY DETAILS */}
+                        {/* TAB SWITCHER HEADER       */}
                         {/* ========================= */}
-
-                        {editedData?.availabilityDetails.map((d, index) => {
-                          const workStart = parseTimeString(d.start_time);
-                          const workEnd = parseTimeString(d.end_time);
-                          const pauseStart = parseTimeString(
-                            d.pause_start || "12:00:00",
-                          );
-                          const pauseEnd = parseTimeString(
-                            d.pause_end || "13:00:00",
-                          );
-
-                          return (
-                            <View key={index} style={styles.editDayCard}>
-                              <View style={styles.dayTitleRow}>
-                                <View style={styles.detailBadge} />
-                                <Text style={styles.dayNameActive}>
-                                  {DAY_NAMES[d.day_of_week]}
-                                </Text>
-                              </View>
-
-                              {/* Work Times */}
-                              <View style={styles.timeRow}>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.inputLabel}>
-                                    Ora e Fillimit
-                                  </Text>
-                                  <DateTimePicker
-                                    value={workStart}
-                                    mode="time"
-                                    display="compact"
-                                    is24Hour={true}
-                                    maximumDate={workEnd}
-                                    onChange={(e, date) => {
-                                      if (!date || !editedData) return;
-                                      const details = [
-                                        ...editedData.availabilityDetails,
-                                      ];
-                                      details[index] = {
-                                        ...details[index],
-                                        start_time: formatTimeString(date),
-                                      };
-                                      setEditedData({
-                                        ...editedData,
-                                        availabilityDetails: details,
-                                      });
-                                    }}
-                                  />
-                                </View>
-
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.inputLabel}>
-                                    Ora e Përfundimit
-                                  </Text>
-                                  <DateTimePicker
-                                    value={workEnd}
-                                    mode="time"
-                                    display="compact"
-                                    is24Hour={true}
-                                    minimumDate={workStart}
-                                    onChange={(e, date) => {
-                                      if (!date || !editedData) return;
-                                      const details = [
-                                        ...editedData.availabilityDetails,
-                                      ];
-                                      details[index] = {
-                                        ...details[index],
-                                        end_time: formatTimeString(date),
-                                      };
-                                      setEditedData({
-                                        ...editedData,
-                                        availabilityDetails: details,
-                                      });
-                                    }}
-                                  />
-                                </View>
-                              </View>
-
-                              {/* Pause / Break Times */}
-                              <View style={[styles.timeRow, { marginTop: 10 }]}>
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.inputLabel}>
-                                    Fillimi i Pushimit
-                                  </Text>
-                                  <DateTimePicker
-                                    value={pauseStart}
-                                    mode="time"
-                                    display="compact"
-                                    is24Hour={true}
-                                    minimumDate={workStart}
-                                    maximumDate={pauseEnd}
-                                    onChange={(e, date) => {
-                                      if (!date || !editedData) return;
-                                      const details = [
-                                        ...editedData.availabilityDetails,
-                                      ];
-                                      details[index] = {
-                                        ...details[index],
-                                        pause_start: formatTimeString(date),
-                                      };
-                                      setEditedData({
-                                        ...editedData,
-                                        availabilityDetails: details,
-                                      });
-                                    }}
-                                  />
-                                </View>
-
-                                <View style={{ flex: 1 }}>
-                                  <Text style={styles.inputLabel}>
-                                    Përfundimi i Pushimit
-                                  </Text>
-                                  <DateTimePicker
-                                    value={pauseEnd}
-                                    mode="time"
-                                    display="compact"
-                                    is24Hour={true}
-                                    minimumDate={pauseStart}
-                                    maximumDate={workEnd}
-                                    onChange={(e, date) => {
-                                      if (!date || !editedData) return;
-                                      const details = [
-                                        ...editedData.availabilityDetails,
-                                      ];
-                                      details[index] = {
-                                        ...details[index],
-                                        pause_end: formatTimeString(date),
-                                      };
-                                      setEditedData({
-                                        ...editedData,
-                                        availabilityDetails: details,
-                                      });
-                                    }}
-                                  />
-                                </View>
-                              </View>
-                            </View>
-                          );
-                        })}
-
-                        {/* ========================= */}
-                        {/* AVAILABLE SKILLS */}
-                        {/* ========================= */}
-
-                        <View style={styles.skillsSection}>
-                          <View style={styles.skillsHeader}>
-                            <Text style={styles.sectionTitle}>
-                              Available Skills
-                            </Text>
-
-                            <TouchableOpacity
-                              style={styles.addSkillButton}
-                              onPress={() => setShowSkillPicker(true)}
+                        <View style={styles.tabContainer}>
+                          <TouchableOpacity
+                            style={[
+                              styles.tabButton,
+                              activeTab === "days" && styles.activeTabButton,
+                            ]}
+                            onPress={() => setActiveTab("days")}
+                          >
+                            <Text
+                              style={[
+                                styles.tabButtonText,
+                                activeTab === "days" && styles.activeTabText,
+                              ]}
                             >
-                              <Text style={styles.addSkillButtonText}>
-                                + Add Skill
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                          {editedData?.sherbimetDisplay?.length === 0 ? (
-                            <Text style={styles.noSkillsText}>
-                              No skills selected
+                              Days of Week
                             </Text>
-                          ) : (
-                            editedData.sherbimetDisplay.map((skill) => (
-                              <View
-                                key={skill.avaSkillId}
-                                style={styles.skillRow}
-                              >
-                                {skill.imagepath ? (
-                                  <Image
-                                    source={{
-                                      uri: `data:image/avif;base64,${skill.imagepath}`,
-                                    }}
-                                    style={styles.serviceImage}
-                                    resizeMode="cover"
-                                  />
-                                ) : (
-                                  <View style={styles.skillImagePlaceholder}>
-                                    <Text>No Image</Text>
-                                  </View>
-                                )}
+                          </TouchableOpacity>
 
-                                <View style={styles.skillInfo}>
-                                  <Text style={styles.skillName}>
-                                    {skill.emri_sherbimit}
-                                  </Text>
-
-                                  <Text style={styles.skillPrice}>
-                                    €{skill.qmimi_baze ?? 0}
-                                  </Text>
-                                </View>
-
-                                <TouchableOpacity
-                                  onPress={() => {
-                                    if (!editedData) return;
-
-                                    setEditedData({
-                                      ...editedData,
-
-                                      availableSkills:
-                                        editedData.availableSkills.filter(
-                                          (id) => id !== skill.avaSkillId,
-                                        ),
-
-                                      sherbimetDisplay:
-                                        editedData.sherbimetDisplay.filter(
-                                          (service) =>
-                                            service.avaSkillId !==
-                                            skill.avaSkillId,
-                                        ),
-                                    });
-                                  }}
-                                  style={styles.removeSkillButton}
-                                >
-                                  <Text style={styles.removeSkillText}>
-                                    Remove
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-                            ))
-                          )}
+                          <TouchableOpacity
+                            style={[
+                              styles.tabButton,
+                              activeTab === "skills" && styles.activeTabButton,
+                            ]}
+                            onPress={() => setActiveTab("skills")}
+                          >
+                            <Text
+                              style={[
+                                styles.tabButtonText,
+                                activeTab === "skills" && styles.activeTabText,
+                              ]}
+                            >
+                              Skills
+                            </Text>
+                          </TouchableOpacity>
                         </View>
 
                         {/* ========================= */}
-                        {/* SAVE / CANCEL */}
+                        {/* AVAILABILITY DETAILS (DAYS)*/}
                         {/* ========================= */}
+                        {activeTab === "days" && (
+                          <View style={styles.tabContent}>
+                            {editedData?.availabilityDetails.map((d, index) => {
+                              const workStart = parseTimeString(d.start_time);
+                              const workEnd = parseTimeString(d.end_time);
+                              const pauseStart = parseTimeString(
+                                d.pause_start || "12:00:00",
+                              );
+                              const pauseEnd = parseTimeString(
+                                d.pause_end || "13:00:00",
+                              );
 
+                              return (
+                                <View key={index} style={styles.editDayCard}>
+                                  <View style={styles.dayTitleRow}>
+                                    <View style={styles.detailBadge} />
+                                    <Text style={styles.dayNameActive}>
+                                      {DAY_NAMES[d.day_of_week]}
+                                    </Text>
+                                  </View>
+
+                                  {/* Work Times */}
+                                  <View style={styles.timeRow}>
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.inputLabel}>
+                                        Ora e Fillimit
+                                      </Text>
+                                      <DateTimePicker
+                                        value={workStart}
+                                        mode="time"
+                                        display="compact"
+                                        is24Hour={true}
+                                        maximumDate={workEnd}
+                                        onChange={(e, date) => {
+                                          if (!date || !editedData) return;
+                                          const details = [
+                                            ...editedData.availabilityDetails,
+                                          ];
+                                          details[index] = {
+                                            ...details[index],
+                                            start_time: formatTimeString(date),
+                                          };
+                                          setEditedData({
+                                            ...editedData,
+                                            availabilityDetails: details,
+                                          });
+                                        }}
+                                      />
+                                    </View>
+
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.inputLabel}>
+                                        Ora e Përfundimit
+                                      </Text>
+                                      <DateTimePicker
+                                        value={workEnd}
+                                        mode="time"
+                                        display="compact"
+                                        is24Hour={true}
+                                        minimumDate={workStart}
+                                        onChange={(e, date) => {
+                                          if (!date || !editedData) return;
+                                          const details = [
+                                            ...editedData.availabilityDetails,
+                                          ];
+                                          details[index] = {
+                                            ...details[index],
+                                            end_time: formatTimeString(date),
+                                          };
+                                          setEditedData({
+                                            ...editedData,
+                                            availabilityDetails: details,
+                                          });
+                                        }}
+                                      />
+                                    </View>
+                                  </View>
+
+                                  {/* Pause / Break Times */}
+                                  <View
+                                    style={[styles.timeRow, { marginTop: 10 }]}
+                                  >
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.inputLabel}>
+                                        Fillimi i Pushimit
+                                      </Text>
+                                      <DateTimePicker
+                                        value={pauseStart}
+                                        mode="time"
+                                        display="compact"
+                                        is24Hour={true}
+                                        minimumDate={workStart}
+                                        maximumDate={pauseEnd}
+                                        onChange={(e, date) => {
+                                          if (!date || !editedData) return;
+                                          const details = [
+                                            ...editedData.availabilityDetails,
+                                          ];
+                                          details[index] = {
+                                            ...details[index],
+                                            pause_start: formatTimeString(date),
+                                          };
+                                          setEditedData({
+                                            ...editedData,
+                                            availabilityDetails: details,
+                                          });
+                                        }}
+                                      />
+                                    </View>
+
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.inputLabel}>
+                                        Përfundimi i Pushimit
+                                      </Text>
+                                      <DateTimePicker
+                                        value={pauseEnd}
+                                        mode="time"
+                                        display="compact"
+                                        is24Hour={true}
+                                        minimumDate={pauseStart}
+                                        maximumDate={workEnd}
+                                        onChange={(e, date) => {
+                                          if (!date || !editedData) return;
+                                          const details = [
+                                            ...editedData.availabilityDetails,
+                                          ];
+                                          details[index] = {
+                                            ...details[index],
+                                            pause_end: formatTimeString(date),
+                                          };
+                                          setEditedData({
+                                            ...editedData,
+                                            availabilityDetails: details,
+                                          });
+                                        }}
+                                      />
+                                    </View>
+                                  </View>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        )}
+
+                        {/* ========================= */}
+                        {/* AVAILABLE SKILLS          */}
+                        {/* ========================= */}
+                        {activeTab === "skills" && (
+                          <View style={styles.skillsSection}>
+                            <View style={styles.skillsHeader}>
+                              <Text style={styles.sectionTitle}>
+                                Available Skills
+                              </Text>
+
+                              <TouchableOpacity
+                                style={styles.addSkillButton}
+                                onPress={() => setShowSkillPicker(true)}
+                              >
+                                <Text style={styles.addSkillButtonText}>
+                                  + Add Skill
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            {editedData?.sherbimetDisplay?.length === 0 ? (
+                              <Text style={styles.noSkillsText}>
+                                No skills selected
+                              </Text>
+                            ) : (
+                              editedData?.sherbimetDisplay?.map((skill) => (
+                                <View
+                                  key={skill.avaSkillId}
+                                  style={styles.skillRow}
+                                >
+                                  {skill.imagePath ? (
+                                    <Image
+                                      source={{
+                                        uri: `data:image/avif;base64,${skill.imagePath}`,
+                                      }}
+                                      style={styles.serviceImage}
+                                      resizeMode="cover"
+                                    />
+                                  ) : (
+                                    <View style={styles.skillImagePlaceholder}>
+                                      <Text style={styles.placeholderText}>
+                                        No Image
+                                      </Text>
+                                    </View>
+                                  )}
+
+                                  <View style={styles.skillInfo}>
+                                    <Text style={styles.skillName}>
+                                      {skill.emri_sherbimit}
+                                    </Text>
+
+                                    <Text style={styles.skillPrice}>
+                                      €{skill.qmimi_baze ?? 0}
+                                    </Text>
+                                  </View>
+
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      if (!editedData) return;
+
+                                      setEditedData({
+                                        ...editedData,
+                                        availableSkills:
+                                          editedData.availableSkills.filter(
+                                            (id) => id !== skill.avaSkillId,
+                                          ),
+                                        sherbimetDisplay:
+                                          editedData.sherbimetDisplay.filter(
+                                            (service) =>
+                                              service.avaSkillId !==
+                                              skill.avaSkillId,
+                                          ),
+                                      });
+                                    }}
+                                    style={styles.removeSkillButton}
+                                  >
+                                    <Text style={styles.removeSkillText}>
+                                      Remove
+                                    </Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ))
+                            )}
+                          </View>
+                        )}
+
+                        {/* ========================= */}
+                        {/* SAVE / CANCEL BUTTONS     */}
+                        {/* ========================= */}
                         <View style={styles.buttonRow}>
                           <Pressable
                             style={styles.cancelButton}
@@ -847,164 +845,610 @@ export default function Availability() {
                         </View>
                       </View>
                     ) : (
-                      <>
-                        {item.availabilityDetails.map((d, index) => (
-                          <View key={index} style={styles.currentDetailItem}>
-                            <View style={styles.detailBadge} />
-
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.dayNameActive}>
-                                {DAY_NAMES[d.day_of_week]}
+                      <View style={styles.cardGroupOuter}>
+                        <View
+                          style={[
+                            styles.currentCard,
+                            editingAvailability === item.id_availability &&
+                              styles.cardActiveShadow,
+                          ]}
+                        >
+                          {/* Header displaying Date Range */}
+                          <View style={styles.currentHeaderRow}>
+                            <View style={styles.headerTitleContainer}>
+                              <Ionicons
+                                name="calendar-outline"
+                                size={18}
+                                color="#4F46E5"
+                                style={{ marginRight: 8 }}
+                              />
+                              <Text style={styles.currentDateRange}>
+                                {item.data_e_fillimit} -{" "}
+                                {item.data_e_marveshjes}
                               </Text>
-
-                              <Text style={styles.detailTimeText}>
-                                {d.start_time.slice(0, 5)} -{" "}
-                                {d.end_time.slice(0, 5)}
-                              </Text>
-
-                              {d.pause_start && d.pause_end && (
-                                <Text style={styles.breakText}>
-                                  Pushimi: {d.pause_start.slice(0, 5)} -{" "}
-                                  {d.pause_end.slice(0, 5)}
-                                </Text>
-                              )}
                             </View>
                           </View>
-                        ))}
 
-                        {item?.sherbimetDisplay &&
-                          item.sherbimetDisplay.length > 0 && (
-                            <View style={styles.skillsContainer}>
-                              <View style={styles.skillsHeader}>
-                                <Ionicons
-                                  name="sparkles-outline"
-                                  size={16}
-                                  color="#4F46E5"
-                                />
-                                <Text style={styles.skillsTitle}>
-                                  Shërbimet e Ofruara
-                                </Text>
-                                <View style={styles.countBadge}>
-                                  <Text style={styles.countBadgeText}>
-                                    {item.sherbimetDisplay.length}
+                          {/* ========================================= */}
+                          {/* MODE 1: EDITING MODE                     */}
+                          {/* ========================================= */}
+                          {editingAvailability === item.id_availability ? (
+                            <View style={styles.editContainer}>
+                              {/* EDIT MODE TAB SWITCHER */}
+                              <View style={styles.tabContainer}>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.tabButton,
+                                    activeTab === "days" &&
+                                      styles.activeTabButton,
+                                  ]}
+                                  onPress={() => setActiveTab("days")}
+                                >
+                                  <Ionicons
+                                    name="calendar-outline"
+                                    size={15}
+                                    color={
+                                      activeTab === "days"
+                                        ? "#4F46E5"
+                                        : "#64748B"
+                                    }
+                                    style={{ marginRight: 6 }}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.tabButtonText,
+                                      activeTab === "days" &&
+                                        styles.activeTabText,
+                                    ]}
+                                  >
+                                    Days of Week
                                   </Text>
-                                </View>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                  style={[
+                                    styles.tabButton,
+                                    activeTab === "skills" &&
+                                      styles.activeTabButton,
+                                  ]}
+                                  onPress={() => setActiveTab("skills")}
+                                >
+                                  <Ionicons
+                                    name="sparkles-outline"
+                                    size={15}
+                                    color={
+                                      activeTab === "skills"
+                                        ? "#4F46E5"
+                                        : "#64748B"
+                                    }
+                                    style={{ marginRight: 6 }}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.tabButtonText,
+                                      activeTab === "skills" &&
+                                        styles.activeTabText,
+                                    ]}
+                                  >
+                                    Skills
+                                  </Text>
+                                </TouchableOpacity>
                               </View>
 
-                              <View style={styles.servicesList}>
-                                {item.sherbimetDisplay.map((sherbi) => {
-                                  const rawImageData =
-                                    sherbi.imagePath || sherbi.imagepath;
-                                  // sherbi.foto_base64 ||
-                                  sherbi.service?.imagePath ||
-                                    sherbi.service?.imagepath;
+                              {/* TAB 1: DAYS (EDIT) */}
+                              {activeTab === "days" && (
+                                <View style={styles.tabContent}>
+                                  {editedData?.availabilityDetails.map(
+                                    (d, index) => {
+                                      const workStart = parseTimeString(
+                                        d.start_time,
+                                      );
+                                      const workEnd = parseTimeString(
+                                        d.end_time,
+                                      );
+                                      const pauseStart = parseTimeString(
+                                        d.pause_start || "12:00:00",
+                                      );
+                                      const pauseEnd = parseTimeString(
+                                        d.pause_end || "13:00:00",
+                                      );
 
-                                  // 3. Match the working image format used in your modal (AVIF fallback)
-                                  const imageUri = rawImageData
-                                    ? rawImageData.startsWith("data:image")
-                                      ? rawImageData
-                                      : `data:image/avif;base64,${rawImageData.trim()}`
-                                    : null;
-
-                                  return (
-                                    <View
-                                      key={sherbi.ID || sherbi.id}
-                                      style={styles.serviceCard}
-                                    >
-                                      {/* Render Image or Fallback */}
-                                      {imageUri ? (
-                                        <Image
-                                          source={{ uri: imageUri }}
-                                          style={styles.serviceImage}
-                                          resizeMode="cover"
-                                        />
-                                      ) : (
+                                      return (
                                         <View
-                                          style={styles.serviceImagePlaceholder}
+                                          key={index}
+                                          style={styles.editDayCard}
                                         >
-                                          <Ionicons
-                                            name="construct-outline"
-                                            size={20}
-                                            color="#4F46E5"
-                                          />
-                                        </View>
-                                      )}
-
-                                      {/* Service Details */}
-                                      <View style={styles.serviceInfo}>
-                                        <Text
-                                          style={styles.serviceName}
-                                          numberOfLines={1}
-                                        >
-                                          {sherbi.emri_sherbimit}
-                                        </Text>
-
-                                        <View style={styles.metaRow}>
-                                          <View style={styles.metaBadge}>
-                                            <Ionicons
-                                              name="time-outline"
-                                              size={12}
-                                              color="#64748B"
-                                            />
-                                            <Text style={styles.metaText}>
-                                              {sherbi.kohezgjatja} min
+                                          <View style={styles.dayTitleRow}>
+                                            <View style={styles.detailBadge} />
+                                            <Text style={styles.dayNameActive}>
+                                              {DAY_NAMES[d.day_of_week]}
                                             </Text>
+                                          </View>
+
+                                          <View style={styles.timeRow}>
+                                            <View style={{ flex: 1 }}>
+                                              <Text style={styles.inputLabel}>
+                                                Ora e Fillimit
+                                              </Text>
+                                              <DateTimePicker
+                                                value={workStart}
+                                                mode="time"
+                                                display="compact"
+                                                is24Hour={true}
+                                                maximumDate={workEnd}
+                                                onChange={(e, date) => {
+                                                  if (!date || !editedData)
+                                                    return;
+                                                  const details = [
+                                                    ...editedData.availabilityDetails,
+                                                  ];
+                                                  details[index] = {
+                                                    ...details[index],
+                                                    start_time:
+                                                      formatTimeString(date),
+                                                  };
+                                                  setEditedData({
+                                                    ...editedData,
+                                                    availabilityDetails:
+                                                      details,
+                                                  });
+                                                }}
+                                              />
+                                            </View>
+
+                                            <View style={{ flex: 1 }}>
+                                              <Text style={styles.inputLabel}>
+                                                Ora e Përfundimit
+                                              </Text>
+                                              <DateTimePicker
+                                                value={workEnd}
+                                                mode="time"
+                                                display="compact"
+                                                is24Hour={true}
+                                                minimumDate={workStart}
+                                                onChange={(e, date) => {
+                                                  if (!date || !editedData)
+                                                    return;
+                                                  const details = [
+                                                    ...editedData.availabilityDetails,
+                                                  ];
+                                                  details[index] = {
+                                                    ...details[index],
+                                                    end_time:
+                                                      formatTimeString(date),
+                                                  };
+                                                  setEditedData({
+                                                    ...editedData,
+                                                    availabilityDetails:
+                                                      details,
+                                                  });
+                                                }}
+                                              />
+                                            </View>
                                           </View>
 
                                           <View
                                             style={[
-                                              styles.metaBadge,
-                                              styles.priceBadge,
+                                              styles.timeRow,
+                                              { marginTop: 10 },
                                             ]}
                                           >
-                                            <Ionicons
-                                              name="pricetag-outline"
-                                              size={12}
-                                              color="#059669"
-                                            />
-                                            <Text style={styles.priceText}>
-                                              {sherbi.qmimi_baze} €
-                                            </Text>
+                                            <View style={{ flex: 1 }}>
+                                              <Text style={styles.inputLabel}>
+                                                Fillimi i Pushimit
+                                              </Text>
+                                              <DateTimePicker
+                                                value={pauseStart}
+                                                mode="time"
+                                                display="compact"
+                                                is24Hour={true}
+                                                minimumDate={workStart}
+                                                maximumDate={pauseEnd}
+                                                onChange={(e, date) => {
+                                                  if (!date || !editedData)
+                                                    return;
+                                                  const details = [
+                                                    ...editedData.availabilityDetails,
+                                                  ];
+                                                  details[index] = {
+                                                    ...details[index],
+                                                    pause_start:
+                                                      formatTimeString(date),
+                                                  };
+                                                  setEditedData({
+                                                    ...editedData,
+                                                    availabilityDetails:
+                                                      details,
+                                                  });
+                                                }}
+                                              />
+                                            </View>
+
+                                            <View style={{ flex: 1 }}>
+                                              <Text style={styles.inputLabel}>
+                                                Përfundimi i Pushimit
+                                              </Text>
+                                              <DateTimePicker
+                                                value={pauseEnd}
+                                                mode="time"
+                                                display="compact"
+                                                is24Hour={true}
+                                                minimumDate={pauseStart}
+                                                maximumDate={workEnd}
+                                                onChange={(e, date) => {
+                                                  if (!date || !editedData)
+                                                    return;
+                                                  const details = [
+                                                    ...editedData.availabilityDetails,
+                                                  ];
+                                                  details[index] = {
+                                                    ...details[index],
+                                                    pause_end:
+                                                      formatTimeString(date),
+                                                  };
+                                                  setEditedData({
+                                                    ...editedData,
+                                                    availabilityDetails:
+                                                      details,
+                                                  });
+                                                }}
+                                              />
+                                            </View>
                                           </View>
                                         </View>
+                                      );
+                                    },
+                                  )}
+                                </View>
+                              )}
+
+                              {/* TAB 2: SKILLS (EDIT) */}
+                              {activeTab === "skills" && (
+                                <View style={styles.skillsSection}>
+                                  <View style={styles.skillsHeader}>
+                                    <Text style={styles.sectionTitle}>
+                                      Available Skills
+                                    </Text>
+                                    <TouchableOpacity
+                                      style={styles.addSkillButton}
+                                      onPress={() => setShowSkillPicker(true)}
+                                    >
+                                      <Text style={styles.addSkillButtonText}>
+                                        + Add Skill
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
+
+                                  {editedData?.sherbimetDisplay?.length ===
+                                  0 ? (
+                                    <Text style={styles.noSkillsText}>
+                                      No skills selected
+                                    </Text>
+                                  ) : (
+                                    editedData?.sherbimetDisplay?.map(
+                                      (skill) => (
+                                        <View
+                                          key={skill.avaSkillId}
+                                          style={styles.skillRow}
+                                        >
+                                          {skill.imagePath ? (
+                                            <Image
+                                              source={{
+                                                uri: `data:image/avif;base64,${skill.imagePath}`,
+                                              }}
+                                              style={styles.serviceImage}
+                                              resizeMode="cover"
+                                            />
+                                          ) : (
+                                            <View
+                                              style={
+                                                styles.skillImagePlaceholder
+                                              }
+                                            >
+                                              <Text
+                                                style={styles.placeholderText}
+                                              >
+                                                No Image
+                                              </Text>
+                                            </View>
+                                          )}
+
+                                          <View style={styles.skillInfo}>
+                                            <Text style={styles.skillName}>
+                                              {skill.emri_sherbimit}
+                                            </Text>
+                                            <Text style={styles.skillPrice}>
+                                              €{skill.qmimi_baze ?? 0}
+                                            </Text>
+                                          </View>
+
+                                          <TouchableOpacity
+                                            onPress={() => {
+                                              if (!editedData) return;
+                                              setEditedData({
+                                                ...editedData,
+                                                availableSkills:
+                                                  editedData.availableSkills.filter(
+                                                    (id) =>
+                                                      id !== skill.avaSkillId,
+                                                  ),
+                                                sherbimetDisplay:
+                                                  editedData.sherbimetDisplay.filter(
+                                                    (service) =>
+                                                      service.avaSkillId !==
+                                                      skill.avaSkillId,
+                                                  ),
+                                              });
+                                            }}
+                                            style={styles.removeSkillButton}
+                                          >
+                                            <Text
+                                              style={styles.removeSkillText}
+                                            >
+                                              Remove
+                                            </Text>
+                                          </TouchableOpacity>
+                                        </View>
+                                      ),
+                                    )
+                                  )}
+                                </View>
+                              )}
+
+                              {/* EDIT ACTION BUTTONS */}
+                              <View style={styles.buttonRow}>
+                                <Pressable
+                                  style={styles.cancelButton}
+                                  onPress={() => {
+                                    setEditingAvailability(null);
+                                    setEditedData(null);
+                                  }}
+                                >
+                                  <Text style={styles.cancelButtonText}>
+                                    Anulo
+                                  </Text>
+                                </Pressable>
+
+                                <Pressable
+                                  style={styles.saveButton}
+                                  onPress={saveAvailability}
+                                >
+                                  <Text style={styles.saveButtonText}>
+                                    Ruaj Përditësimet
+                                  </Text>
+                                </Pressable>
+                              </View>
+                            </View>
+                          ) : (
+                            /* ========================================= */
+                            /* MODE 2: DISPLAY / READ-ONLY MODE         */
+                            /* ========================================= */
+                            <View style={{ marginTop: 12 }}>
+                              {/* READ-ONLY TAB SWITCHER */}
+                              <View style={styles.tabContainer}>
+                                <TouchableOpacity
+                                  style={[
+                                    styles.tabButton,
+                                    activeTab === "days" &&
+                                      styles.activeTabButton,
+                                  ]}
+                                  onPress={() => setActiveTab("days")}
+                                >
+                                  <Ionicons
+                                    name="calendar-outline"
+                                    size={15}
+                                    color={
+                                      activeTab === "days"
+                                        ? "#4F46E5"
+                                        : "#64748B"
+                                    }
+                                    style={{ marginRight: 6 }}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.tabButtonText,
+                                      activeTab === "days" &&
+                                        styles.activeTabText,
+                                    ]}
+                                  >
+                                    Days of Week
+                                  </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                  style={[
+                                    styles.tabButton,
+                                    activeTab === "skills" &&
+                                      styles.activeTabButton,
+                                  ]}
+                                  onPress={() => setActiveTab("skills")}
+                                >
+                                  <Ionicons
+                                    name="sparkles-outline"
+                                    size={15}
+                                    color={
+                                      activeTab === "skills"
+                                        ? "#4F46E5"
+                                        : "#64748B"
+                                    }
+                                    style={{ marginRight: 6 }}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.tabButtonText,
+                                      activeTab === "skills" &&
+                                        styles.activeTabText,
+                                    ]}
+                                  >
+                                    Skills ({item.sherbimetDisplay?.length || 0}
+                                    )
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+
+                              {/* TAB 1: DISPLAY DAYS */}
+                              {activeTab === "days" && (
+                                <View style={styles.tabContent}>
+                                  {item.availabilityDetails.map((d, index) => (
+                                    <View
+                                      key={index}
+                                      style={styles.currentDetailItem}
+                                    >
+                                      <View style={styles.detailBadge} />
+
+                                      <View style={{ flex: 1 }}>
+                                        <Text style={styles.dayNameActive}>
+                                          {DAY_NAMES[d.day_of_week]}
+                                        </Text>
+
+                                        <Text style={styles.detailTimeText}>
+                                          {d.start_time.slice(0, 5)} -{" "}
+                                          {d.end_time.slice(0, 5)}
+                                        </Text>
+
+                                        {d.pause_start && d.pause_end && (
+                                          <Text style={styles.breakText}>
+                                            Pushimi: {d.pause_start.slice(0, 5)}{" "}
+                                            - {d.pause_end.slice(0, 5)}
+                                          </Text>
+                                        )}
                                       </View>
                                     </View>
-                                  );
-                                })}
+                                  ))}
+                                </View>
+                              )}
+
+                              {/* TAB 2: DISPLAY SKILLS */}
+                              {activeTab === "skills" && (
+                                <View style={styles.tabContent}>
+                                  {item?.sherbimetDisplay &&
+                                  item.sherbimetDisplay.length > 0 ? (
+                                    <View style={styles.servicesList}>
+                                      {item.sherbimetDisplay.map((sherbi) => {
+                                        const rawImageData = sherbi.imagePath;
+
+                                        const imageUri = rawImageData
+                                          ? rawImageData.startsWith(
+                                              "data:image",
+                                            )
+                                            ? rawImageData
+                                            : `data:image/avif;base64,${rawImageData.trim()}`
+                                          : null;
+
+                                        return (
+                                          <View
+                                            key={sherbi.ID}
+                                            style={styles.serviceCard}
+                                          >
+                                            {imageUri ? (
+                                              <Image
+                                                source={{ uri: imageUri }}
+                                                style={styles.serviceImage}
+                                                resizeMode="cover"
+                                              />
+                                            ) : (
+                                              <View
+                                                style={
+                                                  styles.serviceImagePlaceholder
+                                                }
+                                              >
+                                                <Ionicons
+                                                  name="construct-outline"
+                                                  size={20}
+                                                  color="#4F46E5"
+                                                />
+                                              </View>
+                                            )}
+
+                                            <View style={styles.serviceInfo}>
+                                              <Text
+                                                style={styles.serviceName}
+                                                numberOfLines={1}
+                                              >
+                                                {sherbi.emri_sherbimit}
+                                              </Text>
+
+                                              <View style={styles.metaRow}>
+                                                <View style={styles.metaBadge}>
+                                                  <Ionicons
+                                                    name="time-outline"
+                                                    size={12}
+                                                    color="#64748B"
+                                                  />
+                                                  <Text style={styles.metaText}>
+                                                    {sherbi.kohezgjatja} min
+                                                  </Text>
+                                                </View>
+
+                                                <View
+                                                  style={[
+                                                    styles.metaBadge,
+                                                    styles.priceBadge,
+                                                  ]}
+                                                >
+                                                  <Ionicons
+                                                    name="pricetag-outline"
+                                                    size={12}
+                                                    color="#059669"
+                                                  />
+                                                  <Text
+                                                    style={styles.priceText}
+                                                  >
+                                                    {sherbi.qmimi_baze} €
+                                                  </Text>
+                                                </View>
+                                              </View>
+                                            </View>
+                                          </View>
+                                        );
+                                      })}
+                                    </View>
+                                  ) : (
+                                    <Text style={styles.noSkillsText}>
+                                      Nuk ka shërbime të caktuara.
+                                    </Text>
+                                  )}
+                                </View>
+                              )}
+
+                              {/* CARD READ-ONLY ACTION BUTTONS */}
+                              <View style={styles.actionButtons}>
+                                <Pressable
+                                  style={styles.editButton}
+                                  onPress={() => startEditing(item)}
+                                >
+                                  <Ionicons
+                                    name="create-outline"
+                                    size={16}
+                                    color="#4F46E5"
+                                    style={{ marginRight: 4 }}
+                                  />
+                                  <Text style={styles.editButtonText}>
+                                    Ndrysho
+                                  </Text>
+                                </Pressable>
+
+                                <Pressable
+                                  style={styles.deleteButton}
+                                  onPress={() =>
+                                    deleteAvailability(item.id_availability)
+                                  }
+                                >
+                                  <Ionicons
+                                    name="trash-outline"
+                                    size={16}
+                                    color="#EF4444"
+                                    style={{ marginRight: 4 }}
+                                  />
+                                  <Text style={styles.deleteButtonText}>
+                                    Fshi
+                                  </Text>
+                                </Pressable>
                               </View>
                             </View>
                           )}
-
-                        <View style={styles.actionButtons}>
-                          <Pressable
-                            style={styles.editButton}
-                            onPress={() => startEditing(item)}
-                          >
-                            <Ionicons
-                              name="create-outline"
-                              size={16}
-                              color="#4F46E5"
-                              style={{ marginRight: 4 }}
-                            />
-                            <Text style={styles.editButtonText}>Ndrysho</Text>
-                          </Pressable>
-
-                          <Pressable
-                            style={styles.deleteButton}
-                            onPress={() =>
-                              deleteAvailability(item.id_availability)
-                            }
-                          >
-                            <Ionicons
-                              name="trash-outline"
-                              size={16}
-                              color="#EF4444"
-                              style={{ marginRight: 4 }}
-                            />
-                            <Text style={styles.deleteButtonText}>Fshi</Text>
-                          </Pressable>
                         </View>
-                      </>
+                      </View>
                     ))}
                 </View>
               </View>
@@ -1128,12 +1572,12 @@ export default function Availability() {
                         />
 
                         {/* SERVICE IMAGE */}
-                        {service.imagepath ? (
+                        {service.imagePath ? (
                           <Image
                             source={{
-                              uri: service.imagepath.startsWith("data:image")
-                                ? service.imagepath
-                                : `data:image/jpeg;base64,${service.imagepath}`,
+                              uri: service.imagePath.startsWith("data:image")
+                                ? service.imagePath
+                                : `data:image/jpeg;base64,${service.imagePath}`,
                             }}
                             style={styles.serviceImage}
                             resizeMode="cover"
@@ -1360,15 +1804,22 @@ export default function Availability() {
                       ]}
                       onPress={() => toggleSkill(skill.id)}
                     >
-                      {/* Replace your current service image block with this */}
-                      {skill.service?.imagepath ? (
+                      {/* Check for whichever property exists on the service object */}
+                      {skill.service?.imagePath || skill.service?.imagepath ? (
                         <Image
                           source={{
-                            uri: skill.service.imagepath.startsWith("data:")
-                              ? skill.service.imagepath
-                              : `data:image/jpeg;base64,${skill.service.imagepath.trim()}`,
+                            uri: (() => {
+                              const path = (
+                                skill.service.imagePath ||
+                                skill.service.imagepath ||
+                                ""
+                              ).trim();
+                              return path.startsWith("data:")
+                                ? path
+                                : `data:image/jpeg;base64,${path}`;
+                            })(),
                           }}
-                          style={styles.serviceImage} // Ensure explicit dimensions are applied
+                          style={styles.serviceImage}
                           resizeMode="cover"
                         />
                       ) : (
@@ -1509,6 +1960,43 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
   },
+  /* --- NEW TAB BAR STYLES --- */
+  tabContainer: {
+    flexDirection: "row",
+    marginBottom: 16,
+    backgroundColor: "#EEF2FF",
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: "#E0E7FF",
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 7,
+  },
+  activeTabButton: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#4F46E5",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  activeTabText: {
+    color: "#4F46E5",
+    fontWeight: "700",
+  },
+  tabContent: {
+    width: "100%",
+  },
+  /* --------------------------- */
   editDayCard: {
     backgroundColor: "#F8FAFC",
     borderRadius: 8,
@@ -1880,8 +2368,8 @@ const styles = StyleSheet.create({
   skillsHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
-    gap: 6,
   },
   skillsTitle: {
     fontSize: 14,
@@ -1938,10 +2426,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ECFDF5",
   },
   skillsSection: {
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    marginTop: 4,
   },
   addSkillButton: {
     backgroundColor: "#EEF2FF",
@@ -1965,7 +2450,6 @@ const styles = StyleSheet.create({
   skillRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     backgroundColor: "#F8FAFC",
     borderRadius: 8,
     paddingVertical: 10,
@@ -1974,13 +2458,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  skillName: {
+  /* --- ADDED SKILL ITEM STYLES --- */
+  skillImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  skillInfo: {
     flex: 1,
-    fontSize: 13,
+    marginLeft: 12,
+    marginRight: 8,
+    justifyContent: "center",
+  },
+  skillName: {
+    fontSize: 14,
     fontWeight: "600",
     color: "#1E293B",
-    marginRight: 10,
   },
+  skillPrice: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4F46E5",
+    marginTop: 2,
+  },
+  /* ------------------------------- */
   removeSkillButton: {
     paddingHorizontal: 9,
     paddingVertical: 6,
@@ -1995,7 +2501,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  /* --- MODAL STYLES (ENHANCED) --- */
+  /* --- MODAL STYLES --- */
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.5)",
