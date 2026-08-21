@@ -859,22 +859,6 @@ export default function Availability() {
                               styles.cardActiveShadow,
                           ]}
                         >
-                          {/* Header displaying Date Range */}
-                          <View style={styles.currentHeaderRow}>
-                            <View style={styles.headerTitleContainer}>
-                              <Ionicons
-                                name="calendar-outline"
-                                size={18}
-                                color="#4F46E5"
-                                style={{ marginRight: 8 }}
-                              />
-                              <Text style={styles.currentDateRange}>
-                                {item.data_e_fillimit} -{" "}
-                                {item.data_e_marveshjes}
-                              </Text>
-                            </View>
-                          </View>
-
                           {/* ========================================= */}
                           {/* MODE 1: EDITING MODE                     */}
                           {/* ========================================= */}
@@ -1578,12 +1562,12 @@ export default function Availability() {
                         />
 
                         {/* SERVICE IMAGE */}
-                        {service.imagePath ? (
+                        {service.imagepath ? (
                           <Image
                             source={{
-                              uri: service.imagePath.startsWith("data:image")
-                                ? service.imagePath
-                                : `data:image/jpeg;base64,${service.imagePath}`,
+                              uri: service.imagepath.startsWith("data:image")
+                                ? service.imagepath
+                                : `data:image/jpeg;base64,${service.imagepath}`,
                             }}
                             style={styles.serviceImage}
                             resizeMode="cover"
