@@ -432,9 +432,15 @@ export default function Availability() {
       }
 
       // Select
+      // Select branch inside toggleSkill
       const serviceDetail: ServiceDetail = {
         ...selectedSkill.service,
         avaSkillId: skillId,
+        // Ensure both property variants are populated
+        imagePath:
+          selectedSkill.service.imagePath ?? selectedSkill.service.imagepath,
+        imagepath:
+          selectedSkill.service.imagepath ?? selectedSkill.service.imagePath,
       };
 
       return {
@@ -1848,9 +1854,7 @@ export default function Availability() {
                           selected && styles.checkboxSelected,
                         ]}
                       >
-                        {selected && (
-                          <Text style={styles.checkmarkText}>✓</Text>
-                        )}
+                        {selected && <Text style={styles.checkmark}>✓</Text>}
                       </View>
                     </TouchableOpacity>
                   );
