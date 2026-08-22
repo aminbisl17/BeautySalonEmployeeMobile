@@ -107,11 +107,9 @@ export default function Skills() {
   }, []);
 
   const handleAddSkill = async (service: any) => {
+    // If the skill is already added, route directly to removal
     if (employeeSkills.some((s) => s.ID === service.ID)) {
-      Alert.alert(
-        "Njoftim",
-        "Kjo aftësi është e shtuar tashmë te profili juaj.",
-      );
+      handleRemoveSkill(service.ID, service.emri_sherbimit);
       return;
     }
 
@@ -149,8 +147,18 @@ export default function Skills() {
           text: "Largo",
           style: "destructive",
           onPress: async () => {
-            await deleteSkill(serviceId);
-            await loadSkills();
+            setSubmitting(true);
+            try {
+              await deleteSkill(serviceId);
+              await loadSkills(); // Refetches active skills
+              // If available services depend on an API fetch, trigger it here:
+              // await loadServices();
+            } catch (error) {
+              console.log("Error removing skill:", error);
+              Alert.alert("Gabim", "Dështoi largimi i aftësisë.");
+            } finally {
+              setSubmitting(false);
+            }
           },
         },
       ],
@@ -331,19 +339,23 @@ export default function Skills() {
 
         {showAllServices && (
           <View style={styles.dropdownContentAttached}>
-            {services.map((service, index) => {
-              const isAdded = employeeSkills.some((s) => s.ID === service.ID);
-              return (
+            {services
+              .filter(
+                (service) =>
+                  !employeeSkills.some(
+                    (s) => (s.ID || s.id) === (service.ID || service.id),
+                  ),
+              )
+              .map((service, index) => (
                 <AvailableBeautyServiceCard
                   key={service.ID ? `service-${service.ID}-${index}` : index}
                   service={service}
-                  isAdded={isAdded}
+                  isAdded={false}
                   submitting={submitting}
                   onPress={() => loadServiceAttributes(service)}
                   onAdd={() => handleAddSkill(service)}
                 />
-              );
-            })}
+              ))}
           </View>
         )}
       </View>

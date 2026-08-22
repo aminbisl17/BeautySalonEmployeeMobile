@@ -71,7 +71,7 @@ export async function addSkills(skills) {
 export async function deleteSkill(id) {
   const API_SKILLS_DELETE = Constants.expoConfig?.extra?.API_SKILLS_DELETE;
   const token = await SecureStore.getItemAsync("accessToken");
-  console.log(API_SKILLS_DELETE + id);
+
   if (!API_SKILLS_DELETE) {
     throw new Error("Missing API_SKILLS_UPDATE");
   }
