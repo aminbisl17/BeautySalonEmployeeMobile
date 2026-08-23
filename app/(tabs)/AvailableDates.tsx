@@ -1562,12 +1562,15 @@ export default function Availability() {
                         />
 
                         {/* SERVICE IMAGE */}
-                        {service.imagepath ? (
+                        {service?.imagepath &&
+                        service.imagepath.trim() !== "" ? (
                           <Image
                             source={{
-                              uri: service.imagepath.startsWith("data:image")
-                                ? service.imagepath
-                                : `data:image/jpeg;base64,${service.imagepath}`,
+                              uri:
+                                service.imagepath.startsWith("data:") ||
+                                service.imagepath.startsWith("http")
+                                  ? service.imagepath
+                                  : `data:image/jpeg;base64,${service.imagepath}`,
                             }}
                             style={styles.serviceImage}
                             resizeMode="cover"
