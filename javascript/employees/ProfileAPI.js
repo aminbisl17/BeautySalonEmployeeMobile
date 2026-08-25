@@ -34,3 +34,31 @@ export async function getData() {
     throw new Error(errorMessage);
   }
 }
+
+export const updateData = async (payload) => {
+  const API = Constants.expoConfig?.extra?.API_EMPLOYEE_DATA;
+
+  if (!API) {
+    throw new Error("API missing for API_EMPLOYEE_DATA_DATA!");
+  }
+
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
+
+    const response = await axios.patch(API, payload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      console.error("Axios Error:", error.response?.data || error.message);
+    } else {
+      console.error("Unexpected Error:", error);
+    }
+    throw error;
+  }
+};

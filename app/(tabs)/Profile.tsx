@@ -1,10 +1,11 @@
-import { getData } from "@/javascript/employees/ProfileAPI";
+import { getData, updateData } from "@/javascript/employees/ProfileAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -24,6 +25,10 @@ export default function Profile() {
   const [emri, setEmri] = useState("");
   const [mbiemri, setMbiemri] = useState("");
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [numriTelefonit, setNumriTelefonit] = useState("");
+  const [userpassword, setUserpassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const loadUser = async (isRefresh = false) => {
@@ -34,10 +39,13 @@ export default function Profile() {
       if (data) {
         const parsedUser = JSON.parse(data);
         setUser(parsedUser);
-        // Pre-fill edit form state
+
         setEmri(parsedUser?.emri || "");
         setMbiemri(parsedUser?.mbiemri || "");
         setUsername(parsedUser?.username || "");
+        setEmail(parsedUser?.email || "");
+        setNumriTelefonit(parsedUser?.numri_telefonit || "");
+        setUserpassword(parsedUser?.userpassword || "");
       }
     } catch (e) {
       console.log(e);
@@ -68,34 +76,78 @@ export default function Profile() {
     }
   };
 
-  const handleSaveProfile = async () => {
+  const executeSaveProfile = async () => {
     try {
       setSaving(true);
-      const updatedUser = { ...user, emri, mbiemri, username };
 
-      // Update state & local SecureStore
+      const payload = {
+        emri: emri.trim(),
+        mbiemri: mbiemri.trim(),
+        email: email.trim(),
+        numri_telefonit: numriTelefonit.trim(),
+        username: username.trim(),
+        userpassword: userpassword,
+      };
+
+      await updateData(payload);
+
+      const updatedUser = { ...user, ...payload };
       setUser(updatedUser);
       await SecureStore.setItemAsync(
         "userDetails",
         JSON.stringify(updatedUser),
       );
 
-      // TODO: Call your API backend update function here if available
-      // e.g., await updateUserData({ emri, mbiemri, username });
-
       setIsEditing(false);
     } catch (e) {
       console.error("Gabim gjatë ruajtjes së profilit:", e);
+      Alert.alert("Gabim", "Diçka shkoi gabim gjatë ruajtjes së profilit.");
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSaveProfile = () => {
+    // Validimi: Fushate e zbrazura (pervec fjalekalimit)
+    if (
+      !emri.trim() ||
+      !mbiemri.trim() ||
+      !username.trim() ||
+      !email.trim() ||
+      !numriTelefonit.trim()
+    ) {
+      Alert.alert(
+        "Kujdes",
+        "Të gjitha fushat përveç fjalëkalimit duhet të plotësohen.",
+      );
+      return;
+    }
+
+    // Dialogu i konfirmimit
+    Alert.alert(
+      "Konfirmo Ruajtjen",
+      "A jeni të sigurt që dëshironi të ruani ndryshimet?",
+      [
+        {
+          text: "Anulo",
+          style: "cancel",
+        },
+        {
+          text: "Po, Ruaj",
+          onPress: executeSaveProfile,
+        },
+      ],
+    );
+  };
+
   const handleCancelEdit = () => {
-    // Reset values to original state
     setEmri(user?.emri || "");
     setMbiemri(user?.mbiemri || "");
     setUsername(user?.username || "");
+    setEmail(user?.email || "");
+    setNumriTelefonit(user?.numri_telefonit || "");
+    setUserpassword(user?.userpassword || "");
+    setShowPassword(false);
     setIsEditing(false);
   };
 
@@ -122,7 +174,7 @@ export default function Profile() {
         />
       }
     >
-      {/* 1. Profile Hero Card */}
+      {/* Profile Avatar Header */}
       <View style={styles.profileHeaderCard}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
@@ -145,12 +197,12 @@ export default function Profile() {
         )}
       </View>
 
-      {/* 2. Account Details Section Panel */}
+      {/* Card Sections */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Të Dhënat e Llogarisë</Text>
 
         <View style={styles.groupCard}>
-          {/* Editable Name Row */}
+          {/* 1. Emri */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -180,7 +232,7 @@ export default function Profile() {
 
           <View style={styles.separator} />
 
-          {/* Editable Last Name Row */}
+          {/* 2. Mbiemri */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -210,7 +262,7 @@ export default function Profile() {
 
           <View style={styles.separator} />
 
-          {/* Editable Username Row */}
+          {/* 3. Emri i Përdoruesit */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -239,7 +291,7 @@ export default function Profile() {
 
           <View style={styles.separator} />
 
-          {/* Read-Only Email Row */}
+          {/* 4. Email */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -248,18 +300,30 @@ export default function Profile() {
                 color="#4F46E5"
                 style={styles.icon}
               />
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.label}>Adresa e Email-it</Text>
-                <Text style={styles.value}>
-                  {user?.email || "E papërcaktuar"}
-                </Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.value, styles.input]}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="Vendos email-in"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {user?.email || "E papërcaktuar"}
+                  </Text>
+                )}
               </View>
             </View>
           </View>
 
           <View style={styles.separator} />
 
-          {/* Read-Only Phone Row */}
+          {/* 5. Numri i Telefonit */}
           <View style={styles.row}>
             <View style={styles.rowLeft}>
               <Ionicons
@@ -268,22 +332,74 @@ export default function Profile() {
                 color="#4F46E5"
                 style={styles.icon}
               />
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.label}>Numri i Telefonit</Text>
-                <Text style={styles.value}>
-                  {user?.numri_telefonit || "Nuk është dhënë"}
-                </Text>
+                {isEditing ? (
+                  <TextInput
+                    style={[styles.value, styles.input]}
+                    value={numriTelefonit}
+                    onChangeText={setNumriTelefonit}
+                    placeholder="Vendos numrin e telefonit"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="phone-pad"
+                  />
+                ) : (
+                  <Text style={styles.value}>
+                    {user?.numri_telefonit || "Nuk është dhënë"}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.separator} />
+
+          {/* 6. Fjalëkalimi */}
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Ionicons
+                name="lock-closed-outline"
+                size={18}
+                color="#4F46E5"
+                style={styles.icon}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.label}>Fjalëkalimi</Text>
+                {isEditing ? (
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <TextInput
+                      style={[styles.value, styles.input, { flex: 1 }]}
+                      value={userpassword}
+                      onChangeText={setUserpassword}
+                      placeholder="Vendos fjalëkalimin e ri"
+                      placeholderTextColor="#94A3B8"
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={{ paddingHorizontal: 8 }}
+                    >
+                      <Ionicons
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={18}
+                        color="#64748B"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={styles.value}>••••••••</Text>
+                )}
               </View>
             </View>
           </View>
         </View>
       </View>
 
-      {/* 3. Actions Section */}
+      {/* Action Buttons */}
       <View style={{ gap: 10 }}>
         {!isEditing ? (
           <>
-            {/* Edit Profile Button */}
             <TouchableOpacity
               onPress={() => setIsEditing(true)}
               activeOpacity={0.8}
@@ -298,7 +414,6 @@ export default function Profile() {
               <Text style={styles.editButtonText}>Ndrysho Të Dhënat</Text>
             </TouchableOpacity>
 
-            {/* Logout Button */}
             <TouchableOpacity
               onPress={handleLogout}
               activeOpacity={0.8}
@@ -315,7 +430,6 @@ export default function Profile() {
           </>
         ) : (
           <>
-            {/* Save Button */}
             <TouchableOpacity
               onPress={handleSaveProfile}
               disabled={saving}
@@ -337,7 +451,6 @@ export default function Profile() {
               )}
             </TouchableOpacity>
 
-            {/* Cancel Button */}
             <TouchableOpacity
               onPress={handleCancelEdit}
               disabled={saving}

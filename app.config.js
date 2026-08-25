@@ -9,6 +9,7 @@ export default {
     orientation: "portrait",
 
     extra: {
+      API_EMPLOYEE_DATA_UPDATE: process.env.API_EMPLOYEE_DATA_UPDATE,
       // Siguria & autorizimi
       API_AUTHENTICATION_LOGIN: process.env.API_AUTHENTICATION_LOGIN,
       API_AUTHENTICATION_REFRESH_TOKEN:
