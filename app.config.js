@@ -27,6 +27,8 @@ export default {
       API_EMPLOYEE_DELETE_AVAILABLE_DATES:
         process.env.API_EMPLOYEE_DELETE_AVAILABLE_DATES,
 
+      API_TERMINET_GET: process.env.API_TERMINET_GET,
+
       API_SKILLS_ADD: process.env.API_SKILLS_ADD,
       API_SKILLS_GET_ALL: process.env.API_SKILLS_GET_ALL,
       API_SKILLS_GET_ID: process.env.API_SKILLS_GET_ID,
