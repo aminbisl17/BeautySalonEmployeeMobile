@@ -1,6 +1,7 @@
+import { getTerminet } from "@/javascript/employees/TerminetAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -10,30 +11,174 @@ import {
   View,
 } from "react-native";
 
-// Example occupied dates data (you can pass real data from your API here)
-const OCCUPIED_DATES: Record<string, { count: number; times: string[] }> = {
-  "2026-07-28": { count: 2, times: ["10:00 - 11:00", "14:30 - 15:30"] },
-  "2026-07-29": { count: 1, times: ["12:00 - 13:00"] },
-  "2026-07-31": {
-    count: 3,
-    times: ["09:00 - 10:00", "11:30 - 12:30", "16:00 - 17:00"],
-  },
-  "2026-08-03": { count: 2, times: ["13:00 - 14:00", "15:00 - 16:00"] },
+const DAYS_HEADER = ["Hën", "Mar", "Mër", "Enj", "Pre", "Sht", "Die"];
+
+// Types matching Backend Data
+export interface Client {
+  ID: number;
+  emri: string;
+  mbiemri: string;
+  numri_telefonit: string;
+  email: string;
+  pershkrimi: string | null;
+  data_regjistrimit: string;
+}
+
+export interface Service {
+  ID: number;
+  emri_sherbimit: string;
+  kohezgjatja: number;
+  qmimi_baze: number;
+  zbritja: number;
+  pershkrimi: string;
+}
+
+export interface AppointmentDetail {
+  id_detajet_termineve: number;
+  id_terminit: number;
+  kohezgjatja: number;
+  pagesa: number;
+  sherbimet: Service;
+}
+
+export interface Appointment {
+  id_terminit: number;
+  employee_id: number;
+  client: Client;
+  data_caktimit: string;
+  data_krijimit: string;
+  pershkrimi: string;
+  detajet_terminit: AppointmentDetail[];
+}
+
+export interface OccupiedDateInfo {
+  count: number;
+  times: string[];
+  appointments: Appointment[];
+}
+
+// Helper to format Date object into YYYY-MM-DD
+const formatDateString = (date: Date): string => {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 };
 
-const DAYS_HEADER = ["Hën", "Mar", "Mër", "Enj", "Pre", "Sht", "Die"];
+// Helper to format ISO time to HH:MM string and calculate end time based on minutes duration
+const formatTimeRange = (isoString: string, totalMinutes: number): string => {
+  const startDate = new Date(isoString);
+  const endDate = new Date(startDate.getTime() + totalMinutes * 60000);
+
+  const startFormatted = startDate.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const endFormatted = endDate.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return `${startFormatted} - ${endFormatted}`;
+};
 
 export default function Home() {
   const router = useRouter();
 
-  // Current view month/year state
-  const [selectedDate, setSelectedDate] = useState<string>("2026-07-28");
+  // State
+  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(
+    new Date(2026, 0, 1),
+  ); // Jan 2026 based on data
+  const [selectedDate, setSelectedDate] = useState<string>("2026-01-19");
+  const [occupiedDates, setOccupiedDates] = useState<
+    Record<string, OccupiedDateInfo>
+  >({});
+  const [loading, setLoading] = useState<boolean>(false);
 
-  // Helper to generate days of current grid view (July 2026)
-  const daysInMonth = Array.from({ length: 31 }, (_, i) => {
-    const dayNum = i + 1;
-    const formattedDay = dayNum < 10 ? `0${dayNum}` : `${dayNum}`;
-    return `2026-07-${formattedDay}`;
+  useEffect(() => {
+    loadTerminet();
+  }, []);
+
+  const loadTerminet = async () => {
+    try {
+      setLoading(true);
+      const data: Appointment[] = await getTerminet();
+      if (!data) return;
+
+      const map: Record<string, OccupiedDateInfo> = {};
+
+      data.forEach((apt) => {
+        // Extract YYYY-MM-DD from "data_caktimit"
+        const dateKey = apt.data_caktimit.split("T")[0];
+
+        // Calculate total duration from service details
+        const totalDuration = (apt.detajet_terminit || []).reduce(
+          (sum, detail) => sum + (detail.kohezgjatja || 0),
+          0,
+        );
+
+        const timeSlot = formatTimeRange(apt.data_caktimit, totalDuration);
+
+        if (!map[dateKey]) {
+          map[dateKey] = {
+            count: 0,
+            times: [],
+            appointments: [],
+          };
+        }
+
+        map[dateKey].count += 1;
+        map[dateKey].times.push(timeSlot);
+        map[dateKey].appointments.push(apt);
+      });
+
+      setOccupiedDates(map);
+
+      // Automatically select the first appointment's date if available
+      const dates = Object.keys(map);
+      if (dates.length > 0) {
+        setSelectedDate(dates[0]);
+        setCurrentMonthDate(new Date(dates[0]));
+      }
+    } catch (err) {
+      console.error("Error fetching appointments:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate day grid dynamically based on `currentMonthDate`
+  const getDaysInMonthGrid = () => {
+    const year = currentMonthDate.getFullYear();
+    const month = currentMonthDate.getMonth();
+
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    // Day of week index (0 = Mon, 6 = Sun)
+    let firstDayIndex = new Date(year, month, 1).getDay() - 1;
+    if (firstDayIndex === -1) firstDayIndex = 6; // Adjust Sunday
+
+    const days: (string | null)[] = [];
+
+    // Empty cells before the 1st day of the month
+    for (let i = 0; i < firstDayIndex; i++) {
+      days.push(null);
+    }
+
+    // Days of the month
+    for (let day = 1; day <= totalDays; day++) {
+      const d = new Date(year, month, day);
+      days.push(formatDateString(d));
+    }
+
+    return days;
+  };
+
+  const monthYearLabel = currentMonthDate.toLocaleDateString("sq-AL", {
+    month: "long",
+    year: "numeric",
   });
 
   return (
@@ -42,21 +187,7 @@ export default function Home() {
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* Top Header 
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Ballina</Text>
-        </View>
-        <Pressable
-          style={styles.profileButton}
-          onPress={() => router.push("/Profile")}
-        >
-          <Ionicons name="person-outline" size={20} color="#4F46E5" />
-        </Pressable>
-      </View> */}
-
-      {/* Quick Action: Availability Setup */}
-
+      {/* Navigation Quick Actions */}
       <Pressable
         style={styles.actionCard}
         onPress={() => router.push("/skills")}
@@ -66,12 +197,13 @@ export default function Home() {
             <Ionicons name="color-palette-outline" size={22} color="#4F46E5" />
           </View>
           <View style={styles.textContainer}>
-            <Text style={styles.title}>Aftesite</Text>
-            <Text style={styles.subtitle}>Menaxhoni aftesite</Text>
+            <Text style={styles.title}>Aftësitë</Text>
+            <Text style={styles.subtitle}>Menaxhoni aftësitë</Text>
           </View>
         </View>
         <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
       </Pressable>
+
       <Pressable
         style={styles.actionCard}
         onPress={() => router.push("/AvailableDates")}
@@ -90,7 +222,7 @@ export default function Home() {
         <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
       </Pressable>
 
-      {/* Interactive Calendar Section */}
+      {/* Calendar Card */}
       <View style={styles.calendarCard}>
         <View style={styles.calendarHeader}>
           <View style={styles.calendarTitleRow}>
@@ -100,7 +232,9 @@ export default function Home() {
               color="#4F46E5"
               style={{ marginRight: 8 }}
             />
-            <Text style={styles.calendarMonthTitle}>Korrik 2026</Text>
+            <Text style={styles.calendarMonthTitle}>
+              {monthYearLabel.charAt(0).toUpperCase() + monthYearLabel.slice(1)}
+            </Text>
           </View>
 
           <TouchableOpacity
@@ -112,7 +246,7 @@ export default function Home() {
           </TouchableOpacity>
         </View>
 
-        {/* Days of week header */}
+        {/* Days Header */}
         <View style={styles.daysHeaderRow}>
           {DAYS_HEADER.map((day, idx) => (
             <Text key={idx} style={styles.dayHeaderCell}>
@@ -121,17 +255,16 @@ export default function Home() {
           ))}
         </View>
 
-        {/* Calendar Grid */}
+        {/* Dynamic Calendar Grid */}
         <View style={styles.calendarGrid}>
-          {/* Empty offset days for start of month alignment */}
-          <View style={styles.dayCell} />
-          <View style={styles.dayCell} />
+          {getDaysInMonthGrid().map((dateStr, index) => {
+            if (!dateStr) {
+              return <View key={`empty-${index}`} style={styles.dayCell} />;
+            }
 
-          {daysInMonth.map((dateStr) => {
             const dayNum = parseInt(dateStr.split("-")[2], 10);
-            const isOccupied = !!OCCUPIED_DATES[dateStr];
+            const isOccupied = !!occupiedDates[dateStr];
             const isSelected = selectedDate === dateStr;
-            const count = OCCUPIED_DATES[dateStr]?.count || 0;
 
             return (
               <TouchableOpacity
@@ -148,7 +281,6 @@ export default function Home() {
                   {dayNum}
                 </Text>
 
-                {/* Status Dot / Badge for Occupied Dates */}
                 {isOccupied && (
                   <View
                     style={[
@@ -177,15 +309,24 @@ export default function Home() {
         {/* Selected Day Details Box */}
         <View style={styles.dayDetailsBox}>
           <Text style={styles.detailsTitle}>
-            Terminet më {selectedDate.split("-").reverse().join(".")}
+            Terminet më{" "}
+            {selectedDate ? selectedDate.split("-").reverse().join(".") : "-"}
           </Text>
 
-          {OCCUPIED_DATES[selectedDate] ? (
+          {occupiedDates[selectedDate] ? (
             <View style={styles.appointmentsList}>
-              {OCCUPIED_DATES[selectedDate].times.map((time, i) => (
-                <View key={i} style={styles.appointmentBadge}>
-                  <Ionicons name="time" size={14} color="#4F46E5" />
-                  <Text style={styles.appointmentText}>{time}</Text>
+              {occupiedDates[selectedDate].appointments.map((apt, i) => (
+                <View
+                  key={apt.id_terminit || i}
+                  style={styles.appointmentBadge}
+                >
+                  <Ionicons name="person" size={14} color="#4F46E5" />
+                  <Text style={styles.appointmentText}>
+                    {apt.client
+                      ? `${apt.client.emri} ${apt.client.mbiemri}`
+                      : "Klient"}{" "}
+                    - {occupiedDates[selectedDate].times[i]}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -209,30 +350,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  welcomeText: {
-    fontSize: 13,
-    color: "#64748B",
-    fontWeight: "500",
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  profileButton: {
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "#EEF2FF",
-  },
-
-  /* Action Card */
   actionCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -242,7 +359,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   cardLeft: {
     flexDirection: "row",
@@ -271,8 +388,6 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginTop: 2,
   },
-
-  /* Calendar Card Component */
   calendarCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
@@ -314,8 +429,6 @@ const styles = StyleSheet.create({
     color: "#4F46E5",
     marginRight: 4,
   },
-
-  /* Calendar Grid Styles */
   daysHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -336,7 +449,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   dayCell: {
-    width: "14.28%", // 7 columns per week
+    width: "14.28%",
     height: 42,
     justifyContent: "center",
     alignItems: "center",
@@ -365,8 +478,6 @@ const styles = StyleSheet.create({
   occupiedDotSelected: {
     backgroundColor: "#FFFFFF",
   },
-
-  /* Legend */
   legendContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -390,8 +501,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
   },
-
-  /* Day Details Drawer */
   dayDetailsBox: {
     marginTop: 16,
     backgroundColor: "#F8FAFC",
@@ -407,16 +516,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   appointmentsList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: "column",
     gap: 8,
   },
   appointmentBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
