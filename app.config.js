@@ -8,8 +8,18 @@ export default {
     slug: "my-app",
     orientation: "portrait",
 
+    ios: {
+      supportsTablet: true,
+      bundleIdentifier: "com.aminbislimaj.beautysalonemployee",
+    },
+
     extra: {
+      eas: {
+        projectId: "84838d65-e1b6-42f8-a611-7ae56e842325",
+      },
+
       API_EMPLOYEE_DATA_UPDATE: process.env.API_EMPLOYEE_DATA_UPDATE,
+
       // Siguria & autorizimi
       API_AUTHENTICATION_LOGIN: process.env.API_AUTHENTICATION_LOGIN,
       API_AUTHENTICATION_REFRESH_TOKEN:
