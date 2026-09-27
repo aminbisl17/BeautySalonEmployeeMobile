@@ -478,6 +478,7 @@ const styles = StyleSheet.create({
   occupiedDotSelected: {
     backgroundColor: "#FFFFFF",
   },
+
   legendContainer: {
     flexDirection: "row",
     justifyContent: "center",
