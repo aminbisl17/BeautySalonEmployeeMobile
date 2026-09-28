@@ -98,7 +98,11 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    loadTerminet();
+    const setup = async () => {
+      await loadTerminet();
+    };
+
+    setup();
   }, []);
 
   const loadTerminet = async () => {

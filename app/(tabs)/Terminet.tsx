@@ -1,7 +1,10 @@
 import { getTerminet } from "@/javascript/employees/TerminetAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
+
+import { subscribeEmployeeAppointments } from "@/javascript/WebSocketClientConnection";
+
 import {
   ActivityIndicator,
   FlatList,
@@ -63,12 +66,37 @@ export default function Terminet() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Track expanded service detail IDs to show/hide attributes
   const [expandedDetailIds, setExpandedDetailIds] = useState<number[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      loadTerminet();
+      let subscription = null;
+
+      const setup = async () => {
+        try {
+          setLoading(true);
+
+          await loadTerminet();
+
+          subscription = await subscribeEmployeeAppointments(
+            (updatedAppointments) => {
+              setAppointments(updatedAppointments);
+            },
+          );
+        } catch (error) {
+          console.error("Terminet setup error:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      setup();
+
+      return () => {
+        if (subscription) {
+          subscription.unsubscribe();
+        }
+      };
     }, []),
   );
 

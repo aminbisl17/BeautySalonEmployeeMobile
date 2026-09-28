@@ -47,6 +47,8 @@ export default {
 
       API_SHERBIMET_ALL: process.env.API_SHERBIMET_ALL,
       API_SHERBIMET_ATRIBUTET: process.env.API_SHERBIMET_ATRIBUTET,
+
+      API_WS: process.env.API_WS,
     },
   },
 };
