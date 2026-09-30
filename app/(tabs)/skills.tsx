@@ -9,7 +9,7 @@ import {
 } from "@/javascript/sherbimet/sherbimetAPI";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -537,10 +537,16 @@ function AvailableBeautyServiceCard({
         <View style={styles.imageContainer}>
           {service.imagePath ? (
             <Image
-              source={{
-                uri: `data:image/jpeg;base64,${service.imagePath}`,
-              }}
+              source={{ uri: service.imagePath }}
               style={styles.image}
+              resizeMode="cover"
+              onError={(e) =>
+                console.log(
+                  "IMG ERROR:",
+                  service.imagePath,
+                  e.nativeEvent.error,
+                )
+              }
             />
           ) : (
             <View style={styles.placeholderImage}>

@@ -44,7 +44,6 @@ export interface ServiceDetail {
   zbritja: number;
   pershkrimi: string;
   imagePath?: string;
-  imagepath?: string;
   created_at: string;
   updated_at: string;
   atributet: ServiceAttribute[];
@@ -436,11 +435,6 @@ export default function Availability() {
       const serviceDetail: ServiceDetail = {
         ...selectedSkill.service,
         avaSkillId: skillId,
-        // Ensure both property variants are populated
-        imagePath:
-          selectedSkill.service.imagePath ?? selectedSkill.service.imagepath,
-        imagepath:
-          selectedSkill.service.imagepath ?? selectedSkill.service.imagePath,
       };
 
       return {
@@ -772,9 +766,7 @@ export default function Availability() {
                                 >
                                   {skill.imagePath ? (
                                     <Image
-                                      source={{
-                                        uri: `data:image/avif;base64,${skill.imagePath}`,
-                                      }}
+                                      source={{ uri: skill.imagePath }}
                                       style={styles.serviceImage}
                                       resizeMode="cover"
                                     />
@@ -1123,9 +1115,7 @@ export default function Availability() {
                                         >
                                           {skill.imagePath ? (
                                             <Image
-                                              source={{
-                                                uri: `data:image/avif;base64,${skill.imagePath}`,
-                                              }}
+                                              source={{ uri: skill.imagePath }}
                                               style={styles.serviceImage}
                                               resizeMode="cover"
                                             />
@@ -1142,7 +1132,6 @@ export default function Availability() {
                                               </Text>
                                             </View>
                                           )}
-
                                           <View style={styles.skillInfo}>
                                             <Text style={styles.skillName}>
                                               {skill.emri_sherbimit}
@@ -1309,89 +1298,76 @@ export default function Availability() {
                               )}
 
                               {/* TAB 2: DISPLAY SKILLS */}
+
                               {activeTab === "skills" && (
                                 <View style={styles.tabContent}>
                                   {item?.sherbimetDisplay &&
                                   item.sherbimetDisplay.length > 0 ? (
                                     <View style={styles.servicesList}>
-                                      {item.sherbimetDisplay.map((sherbi) => {
-                                        const rawImageData = sherbi.imagePath;
-
-                                        const imageUri = rawImageData
-                                          ? rawImageData.startsWith(
-                                              "data:image",
-                                            )
-                                            ? rawImageData
-                                            : `data:image/avif;base64,${rawImageData.trim()}`
-                                          : null;
-
-                                        return (
-                                          <View
-                                            key={sherbi.ID}
-                                            style={styles.serviceCard}
-                                          >
-                                            {imageUri ? (
-                                              <Image
-                                                source={{ uri: imageUri }}
-                                                style={styles.serviceImage}
-                                                resizeMode="cover"
+                                      {item.sherbimetDisplay.map((sherbi) => (
+                                        <View
+                                          key={sherbi.ID}
+                                          style={styles.serviceCard}
+                                        >
+                                          {sherbi.imagePath ? (
+                                            <Image
+                                              source={{ uri: sherbi.imagePath }}
+                                              style={styles.serviceImage}
+                                              resizeMode="cover"
+                                            />
+                                          ) : (
+                                            <View
+                                              style={
+                                                styles.serviceImagePlaceholder
+                                              }
+                                            >
+                                              <Ionicons
+                                                name="construct-outline"
+                                                size={20}
+                                                color="#4F46E5"
                                               />
-                                            ) : (
+                                            </View>
+                                          )}
+
+                                          <View style={styles.serviceInfo}>
+                                            <Text
+                                              style={styles.serviceName}
+                                              numberOfLines={1}
+                                            >
+                                              {sherbi.emri_sherbimit}
+                                            </Text>
+
+                                            <View style={styles.metaRow}>
+                                              <View style={styles.metaBadge}>
+                                                <Ionicons
+                                                  name="time-outline"
+                                                  size={12}
+                                                  color="#64748B"
+                                                />
+                                                <Text style={styles.metaText}>
+                                                  {sherbi.kohezgjatja} min
+                                                </Text>
+                                              </View>
+
                                               <View
-                                                style={
-                                                  styles.serviceImagePlaceholder
-                                                }
+                                                style={[
+                                                  styles.metaBadge,
+                                                  styles.priceBadge,
+                                                ]}
                                               >
                                                 <Ionicons
-                                                  name="construct-outline"
-                                                  size={20}
-                                                  color="#4F46E5"
+                                                  name="pricetag-outline"
+                                                  size={12}
+                                                  color="#059669"
                                                 />
-                                              </View>
-                                            )}
-
-                                            <View style={styles.serviceInfo}>
-                                              <Text
-                                                style={styles.serviceName}
-                                                numberOfLines={1}
-                                              >
-                                                {sherbi.emri_sherbimit}
-                                              </Text>
-
-                                              <View style={styles.metaRow}>
-                                                <View style={styles.metaBadge}>
-                                                  <Ionicons
-                                                    name="time-outline"
-                                                    size={12}
-                                                    color="#64748B"
-                                                  />
-                                                  <Text style={styles.metaText}>
-                                                    {sherbi.kohezgjatja} min
-                                                  </Text>
-                                                </View>
-
-                                                <View
-                                                  style={[
-                                                    styles.metaBadge,
-                                                    styles.priceBadge,
-                                                  ]}
-                                                >
-                                                  <Ionicons
-                                                    name="pricetag-outline"
-                                                    size={12}
-                                                    color="#059669"
-                                                  />
-                                                  <Text
-                                                    style={styles.priceText}
-                                                  >
-                                                    {sherbi.qmimi_baze} €
-                                                  </Text>
-                                                </View>
+                                                <Text style={styles.priceText}>
+                                                  {sherbi.qmimi_baze} €
+                                                </Text>
                                               </View>
                                             </View>
                                           </View>
-                                        );
-                                      })}
+                                        </View>
+                                      ))}
                                     </View>
                                   ) : (
                                     <Text style={styles.noSkillsText}>
@@ -1562,16 +1538,10 @@ export default function Availability() {
                         />
 
                         {/* SERVICE IMAGE */}
-                        {service?.imagepath &&
-                        service.imagepath.trim() !== "" ? (
+                        {/* SERVICE IMAGE */}
+                        {service?.imagePath ? (
                           <Image
-                            source={{
-                              uri:
-                                service.imagepath.startsWith("data:") ||
-                                service.imagepath.startsWith("http")
-                                  ? service.imagepath
-                                  : `data:image/jpeg;base64,${service.imagepath}`,
-                            }}
+                            source={{ uri: service.imagePath }}
                             style={styles.serviceImage}
                             resizeMode="cover"
                           />
@@ -1798,20 +1768,9 @@ export default function Availability() {
                       onPress={() => toggleSkill(skill.id)}
                     >
                       {/* Check for whichever property exists on the service object */}
-                      {skill.service?.imagePath || skill.service?.imagepath ? (
+                      {skill.service?.imagePath ? (
                         <Image
-                          source={{
-                            uri: (() => {
-                              const path = (
-                                skill.service.imagePath ||
-                                skill.service.imagepath ||
-                                ""
-                              ).trim();
-                              return path.startsWith("data:")
-                                ? path
-                                : `data:image/jpeg;base64,${path}`;
-                            })(),
-                          }}
+                          source={{ uri: skill.service.imagePath }}
                           style={styles.serviceImage}
                           resizeMode="cover"
                         />

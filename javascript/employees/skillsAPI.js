@@ -24,7 +24,19 @@ export async function getSkills() {
       },
     );
 
-    return response.data;
+    const data = response.data;
+
+    return (Array.isArray(data) ? data : []).map((item) => {
+      const { imagepath, ...restService } = item.service || {};
+
+      return {
+        ...item,
+        service: {
+          ...restService,
+          imagePath: restService.imagePath ?? imagepath,
+        },
+      };
+    });
   } catch (error) {
     const errorMessage =
       error.response?.data || error.message || "Something went wrong.";
