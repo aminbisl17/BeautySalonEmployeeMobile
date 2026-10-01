@@ -62,11 +62,10 @@ export default function Skills() {
         pershkrimi: skill.service?.pershkrimi ?? "",
         qmimi_baze: skill.service?.qmimi_baze ?? 0,
         kohezgjatja: skill.service?.kohezgjatja ?? 0,
-        imagePath: skill.service?.imagepath ?? null,
+        imagePath: skill.service?.imagePath ?? null,
         atributet: skill.service?.atributet ?? [],
         service: skill.service,
       }));
-
       setEmployeeSkills(formatted);
     } catch (e) {
       console.log("Error loading skills:", e);
@@ -454,12 +453,7 @@ function BeautySkillCard({
       >
         <View style={styles.imageContainer}>
           {skill.imagePath ? (
-            <Image
-              source={{
-                uri: `data:image/jpeg;base64,${skill.imagePath}`,
-              }}
-              style={styles.image}
-            />
+            <Image source={{ uri: skill.imagePath }} style={styles.image} />
           ) : (
             <View style={styles.placeholderImage}>
               <Ionicons name="sparkles-outline" size={22} color="#94A3B8" />
