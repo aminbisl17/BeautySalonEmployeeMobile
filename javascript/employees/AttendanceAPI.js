@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 import { Alert } from "react-native";
-import { api } from "./client";
+import { api } from "../client";
 
 export async function validateCode(data) {
   const url = Constants.expoConfig?.extra?.API_AUTHENTICATION_VALIDATE;

@@ -8,12 +8,12 @@ import {
   fetchServices,
 } from "@/javascript/sherbimet/sherbimetAPI";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -453,7 +453,7 @@ function BeautySkillCard({
       >
         <View style={styles.imageContainer}>
           {skill.imagePath ? (
-            <Image source={{ uri: skill.imagePath }} style={styles.image} />
+            <Image source={{ uri: skill.imagePath }} style={styles.image} contentFit="cover" />
           ) : (
             <View style={styles.placeholderImage}>
               <Ionicons name="sparkles-outline" size={22} color="#94A3B8" />
@@ -533,7 +533,7 @@ function AvailableBeautyServiceCard({
             <Image
               source={{ uri: service.imagePath }}
               style={styles.image}
-              resizeMode="cover"
+              contentFit="cover"
               onError={(e) =>
                 console.log(
                   "IMG ERROR:",

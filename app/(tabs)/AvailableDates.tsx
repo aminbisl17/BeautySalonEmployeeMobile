@@ -1,8 +1,8 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Image } from "expo-image";
 import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
-  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -768,7 +768,7 @@ export default function Availability() {
                                     <Image
                                       source={{ uri: skill.imagePath }}
                                       style={styles.serviceImage}
-                                      resizeMode="cover"
+                                      contentFit="cover"
                                     />
                                   ) : (
                                     <View style={styles.skillImagePlaceholder}>
@@ -1117,7 +1117,7 @@ export default function Availability() {
                                             <Image
                                               source={{ uri: skill.imagePath }}
                                               style={styles.serviceImage}
-                                              resizeMode="cover"
+                                              contentFit="cover"
                                             />
                                           ) : (
                                             <View
@@ -1310,11 +1310,18 @@ export default function Availability() {
                                           style={styles.serviceCard}
                                         >
                                           {sherbi.imagePath ? (
-                                            <Image
-                                              source={{ uri: sherbi.imagePath }}
-                                              style={styles.serviceImage}
-                                              resizeMode="cover"
-                                            />
+                                           <Image
+  source={{ uri: sherbi.imagePath }}
+  style={styles.serviceImage}
+  contentFit="cover"
+  onLoad={(event) => {
+    console.log("IMAGE LOADED:", event.source);
+  }}
+  onError={(event) => {
+    console.log("IMAGE URL:", sherbi.imagePath);
+    console.log("IMAGE ERROR:", event.error);
+  }}
+/>
                                           ) : (
                                             <View
                                               style={

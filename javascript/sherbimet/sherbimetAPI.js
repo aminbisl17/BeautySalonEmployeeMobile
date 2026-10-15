@@ -1,46 +1,44 @@
-import axios from "axios";
 import Constants from "expo-constants";
 import { Alert } from "react-native";
+import { api } from "../client";
+
 
 export async function fetchServices() {
-  const API_SHERBIMET_ALL = Constants.expoConfig?.extra?.API_SHERBIMET_ALL;
+  const url = Constants.expoConfig?.extra?.API_SHERBIMET_ALL;
+  if (!url) throw new Error("Missing API_SHERBIMET_ALL");
 
-  if (!API_SHERBIMET_ALL) {
-    throw new Error("API missing for API_SHERBIMET_ALL!");
-  }
   try {
-    const response = await axios.get(API_SHERBIMET_ALL, {
-      withCredentials: true,
-    });
+    const response = await api.get(url, { withCredentials: true });
 
     return response.data;
   } catch (error) {
     const errorMessage =
-      error.response?.data || error.message || "Something went wrong.";
+      error.response?.data?.message ||
+      error.response?.data ||
+      error.message ||
+      "Something went wrong.";
 
-    Alert.alert("Error", errorMessage);
-    throw new Error(errorMessage);
+    Alert.alert("Error", String(errorMessage));
+    throw new Error(String(errorMessage));
   }
 }
 
+
 export async function fetchServiceAtributes(id) {
-  const API_SHERBIMET_ATRIBUTET =
-    Constants.expoConfig?.extra?.API_SHERBIMET_ATRIBUTET;
+  const url = Constants.expoConfig?.extra?.API_SHERBIMET_ATRIBUTET;
+  if (!url) throw new Error("Missing API_SHERBIMET_ATRIBUTET");
 
-  if (!API_SHERBIMET_ATRIBUTET) {
-    throw new Error("API missing for API_SHERBIMET_ATRIBUTET!");
-  }
   try {
-    const response = await axios.get(API_SHERBIMET_ATRIBUTET + id, {
-      withCredentials: true,
-    });
-
+    const response = await api.get(url + id, { withCredentials: true });
     return response.data;
   } catch (error) {
     const errorMessage =
-      error.response?.data || error.message || "Something went wrong.";
+      error.response?.data?.message ||
+      error.response?.data ||
+      error.message ||
+      "Something went wrong.";
 
-    Alert.alert("Error", errorMessage);
-    throw new Error(errorMessage);
+    Alert.alert("Error", String(errorMessage));
+    throw new Error(String(errorMessage));
   }
 }

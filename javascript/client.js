@@ -1,4 +1,4 @@
-// api/client.ts
+// javascript/client.js
 import axios from "axios";
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
@@ -10,10 +10,13 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync("accessToken");
+  if (TENANT_KEY) config.headers["X-Tenant-ID"] = TENANT_KEY;
 
-  if (TENANT_KEY) config.headers["X-Tenant-Key"] = TENANT_KEY;
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Login and refresh pass skipAuth so they don't send an expired token.
+  if (!config.skipAuth) {
+    const token = await SecureStore.getItemAsync("accessToken");
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
 
   return config;
 });
