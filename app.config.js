@@ -2,11 +2,16 @@ import "dotenv/config";
 
 export default {
   expo: {
-    plugins: ["@react-native-community/datetimepicker"],
+    owner: "aminbisl20",
 
     name: "BeautySalon",
     slug: "my-app",
     orientation: "portrait",
+
+    plugins: [
+      "@react-native-community/datetimepicker",
+      "expo-notifications",
+    ],
 
     ios: {
       supportsTablet: true,
@@ -20,13 +25,13 @@ export default {
 
       API_EMPLOYEE_DATA_UPDATE: process.env.API_EMPLOYEE_DATA_UPDATE,
 
-      // Siguria & autorizimi
+      // Authentication
       API_AUTHENTICATION_LOGIN: process.env.API_AUTHENTICATION_LOGIN,
       API_AUTHENTICATION_REFRESH_TOKEN:
         process.env.API_AUTHENTICATION_REFRESH_TOKEN,
       API_AUTHENTICATION_VALIDATE: process.env.API_AUTHENTICATION_VALIDATE,
 
-      // Orari + operacione tjera
+      // Employee schedule and operations
       API_EMPLOYEE_DATA: process.env.API_EMPLOYEE_DATA,
       API_EMPLOYEE_SET_AVAILABLE_DATES:
         process.env.API_EMPLOYEE_SET_AVAILABLE_DATES,
