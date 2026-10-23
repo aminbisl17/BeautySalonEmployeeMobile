@@ -1,11 +1,10 @@
-
 import { getPushToken } from "@/javascript/Notification";
 import { connectWebSocket } from "@/javascript/WebSocketClientConnection";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
 export default function RootLayout() {
   // ... your useEffect initialization code ...
- useEffect(() => {
+  useEffect(() => {
     let mounted = true;
 
     const initializeApp = async () => {
@@ -39,7 +38,7 @@ export default function RootLayout() {
     };
   }, []);
 
- return (
+  return (
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: "#f0f2f5" },
@@ -56,14 +55,6 @@ export default function RootLayout() {
         options={{
           headerShown: true,
           title: "Aftësitë",
-          headerBackTitle: "Kthehu",
-        }}
-      />
-      <Stack.Screen
-        name="AvailableDates"
-        options={{
-          headerShown: true,
-          title: "Kalendari",
           headerBackTitle: "Kthehu",
         }}
       />

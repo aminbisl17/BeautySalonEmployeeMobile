@@ -58,8 +58,16 @@ export default function VerifyTenant() {
     scale.setValue(0.85);
 
     Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 600, useNativeDriver: true }),
-      Animated.spring(scale, { toValue: 1, friction: 6, useNativeDriver: true }),
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 6,
+        useNativeDriver: true,
+      }),
     ]).start();
 
     const timer = setTimeout(() => {
@@ -70,75 +78,79 @@ export default function VerifyTenant() {
   }, [mode]);
 
   // Shows one error at a time and keeps the scanner locked until it's dismissed
-const showScanError = (title: string, message: string) => {
-  scannedRef.current = true; // stay locked while the alert is open
+  const showScanError = (title: string, message: string) => {
+    scannedRef.current = true; // stay locked while the alert is open
 
-  Alert.alert(
-    title,
-    message,
-    [
-      {
-        text: "Try again",
-        onPress: () => {
-          // small delay so the camera doesn't instantly re-read the same code
-          setTimeout(() => {
-            scannedRef.current = false;
-          }, 1500);
+    Alert.alert(
+      title,
+      message,
+      [
+        {
+          text: "Try again",
+          onPress: () => {
+            // small delay so the camera doesn't instantly re-read the same code
+            setTimeout(() => {
+              scannedRef.current = false;
+            }, 1500);
+          },
         },
-      },
-      {
-        text: "Enter manually",
-        onPress: () => setMode("manual"),
-      },
-    ],
-    { cancelable: false } // Android: back button / outside tap can't skip the unlock
-  );
-};
+        {
+          text: "Enter manually",
+          onPress: () => setMode("manual"),
+        },
+      ],
+      { cancelable: false }, // Android: back button / outside tap can't skip the unlock
+    );
+  };
 
   const verify = async (payload: { username: string; otp: string }) => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await api.post(
-      VALIDATE_URL,
-      {
-        otp: payload.otp,
-        username: payload.username,
-      },
-      { skipAuth: true,
-        headers: {
-          "X-Tenant-ID": "tenant-dbo",
+      const res = await api.post(
+        VALIDATE_URL,
+        {
+          otp: payload.otp,
+          username: payload.username,
         },
-       },
-    );
+        {
+          skipAuth: true,
+          headers: {
+            "X-Tenant-ID": "tenant-dbo",
+          },
+        },
+      );
 
-   const data = res.data;
-console.log("VERIFY:", res.status, data);
+      const data = res.data;
+      console.log("VERIFY:", res.status, data);
 
-const token = data?.accessToken;
+      const token = data?.accessToken;
 
-if (!token) {
-  throw new Error("No token returned from server");
-}
+      if (!token) {
+        throw new Error("No token returned from server");
+      }
 
-await SecureStore.setItemAsync(TENANT_TOKEN_KEY, String(token));
-clearTenantCache(); // so the interceptor picks up the new tenant key
-setWelcomeName(payload.username);
-setMode("welcome");
+      await SecureStore.setItemAsync(TENANT_TOKEN_KEY, String(token));
+      clearTenantCache(); // so the interceptor picks up the new tenant key
+      setWelcomeName(payload.username);
+      setMode("welcome");
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Invalid username or OTP";
 
-} catch (error: any) {
-  const message =
-    error?.response?.data?.message ||
-    error?.response?.data?.error ||
-    error?.message ||
-    "Invalid username or OTP";
-
-  console.log("VERIFY ERROR:", error?.response?.status, error?.response?.data);
-  showScanError("Verification failed", String(message));
-} finally {
-  setLoading(false);
-}
-};
+      console.log(
+        "VERIFY ERROR:",
+        error?.response?.status,
+        error?.response?.data,
+      );
+      showScanError("Verification failed", String(message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (scannedRef.current || loading) return;
@@ -151,7 +163,10 @@ setMode("welcome");
 
       verify({ username: String(parsed.username), otp: String(parsed.otp) });
     } catch {
-      Alert.alert("Invalid QR code", "This QR code is not a valid tenant code.");
+      Alert.alert(
+        "Invalid QR code",
+        "This QR code is not a valid tenant code.",
+      );
       setTimeout(() => {
         scannedRef.current = false;
       }, 1500);
@@ -164,7 +179,7 @@ setMode("welcome");
       if (!result.granted) {
         Alert.alert(
           "Camera permission needed",
-          "Please allow camera access in settings to scan the QR code."
+          "Please allow camera access in settings to scan the QR code.",
         );
         return;
       }
@@ -173,7 +188,8 @@ setMode("welcome");
     setMode("qr");
   };
 
-  const canSubmit = !loading && username.trim().length > 0 && otp.length === OTP_LENGTH;
+  const canSubmit =
+    !loading && username.trim().length > 0 && otp.length === OTP_LENGTH;
 
   // ================= WELCOME =================
   if (mode === "welcome") {
@@ -218,28 +234,38 @@ setMode("welcome");
         <View style={styles.cards}>
           <Pressable
             onPress={openQr}
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
           >
             <View style={[styles.cardIcon, { backgroundColor: "#EEF2FF" }]}>
               <Ionicons name="qr-code-outline" size={26} color={PRIMARY} />
             </View>
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>Scan QR code</Text>
-              <Text style={styles.cardDesc}>Fastest way, just point your camera</Text>
+              <Text style={styles.cardDesc}>
+                Fastest way, just point your camera
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
           </Pressable>
 
           <Pressable
             onPress={() => setMode("manual")}
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            style={({ pressed }) => [
+              styles.card,
+              pressed && styles.cardPressed,
+            ]}
           >
             <View style={[styles.cardIcon, { backgroundColor: "#ECFDF5" }]}>
               <Ionicons name="keypad-outline" size={26} color="#059669" />
             </View>
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>Enter code manually</Text>
-              <Text style={styles.cardDesc}>Use your username and 6-digit OTP</Text>
+              <Text style={styles.cardDesc}>
+                Use your username and 6-digit OTP
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
           </Pressable>
@@ -264,7 +290,9 @@ setMode("welcome");
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <View style={[styles.mask, styles.maskTop]}>
             <Text style={styles.scanTitle}>Scan QR code</Text>
-            <Text style={styles.scanSubtitle}>Align the code inside the frame</Text>
+            <Text style={styles.scanSubtitle}>
+              Align the code inside the frame
+            </Text>
           </View>
 
           <View style={styles.middleRow}>
@@ -283,7 +311,10 @@ setMode("welcome");
 
         {/* Top bar */}
         <View style={[styles.topBar, { top: insets.top + 12 }]}>
-          <Pressable style={styles.roundButton} onPress={() => setMode("choose")}>
+          <Pressable
+            style={styles.roundButton}
+            onPress={() => setMode("choose")}
+          >
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </Pressable>
 
@@ -291,13 +322,20 @@ setMode("welcome");
             style={[styles.roundButton, torch && styles.roundButtonActive]}
             onPress={() => setTorch((t) => !t)}
           >
-            <Ionicons name={torch ? "flash" : "flash-outline"} size={20} color="#fff" />
+            <Ionicons
+              name={torch ? "flash" : "flash-outline"}
+              size={20}
+              color="#fff"
+            />
           </Pressable>
         </View>
 
         {/* Bottom action */}
         <View style={[styles.bottomBar, { bottom: insets.bottom + 24 }]}>
-          <Pressable style={styles.glassButton} onPress={() => setMode("manual")}>
+          <Pressable
+            style={styles.glassButton}
+            onPress={() => setMode("manual")}
+          >
             <Ionicons name="keypad-outline" size={18} color="#fff" />
             <Text style={styles.glassButtonText}>Enter code manually</Text>
           </Pressable>
@@ -331,7 +369,9 @@ setMode("welcome");
           <Ionicons name="chevron-back" size={22} color="#0F172A" />
         </Pressable>
 
-        <Text style={[styles.title, { marginTop: 24 }]}>Enter your details</Text>
+        <Text style={[styles.title, { marginTop: 24 }]}>
+          Enter your details
+        </Text>
         <Text style={styles.subtitle}>
           Type your username and the 6-digit code you received.
         </Text>
@@ -376,7 +416,9 @@ setMode("welcome");
         <TextInput
           ref={otpInputRef}
           value={otp}
-          onChangeText={(t) => setOtp(t.replace(/[^0-9]/g, "").slice(0, OTP_LENGTH))}
+          onChangeText={(t) =>
+            setOtp(t.replace(/[^0-9]/g, "").slice(0, OTP_LENGTH))
+          }
           keyboardType="number-pad"
           maxLength={OTP_LENGTH}
           textContentType="oneTimeCode"
@@ -502,7 +544,11 @@ const styles = StyleSheet.create({
   // Camera
   cameraScreen: { flex: 1, backgroundColor: "#000" },
   mask: { flex: 1, backgroundColor: MASK },
-  maskTop: { alignItems: "center", justifyContent: "flex-end", paddingBottom: 28 },
+  maskTop: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 28,
+  },
   maskBottom: {},
   middleRow: { flexDirection: "row", height: FRAME_SIZE },
   frame: { width: FRAME_SIZE, height: FRAME_SIZE },
@@ -608,8 +654,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 20,
   },
-  input: { flex: 1, paddingVertical: 16, paddingLeft: 10, fontSize: 16, color: "#0F172A" },
-  otpRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 28 },
+  input: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingLeft: 10,
+    fontSize: 16,
+    color: "#0F172A",
+  },
+  otpRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 28,
+  },
   otpBox: {
     width: 48,
     height: 58,

@@ -7,15 +7,23 @@ export default function TabLayout() {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: "#007AFF",
         tabBarInactiveTintColor: "#8e8e93",
+
         tabBarStyle: {
           backgroundColor: "#fff",
           height: 60,
           paddingBottom: 5,
         },
-        // Keep tab headers visible so Home, Profile, and QrScanner show their headers!
-        headerShown: true, 
-        headerStyle: { backgroundColor: "#f0f2f5" },
-        headerTitleStyle: { fontWeight: "bold" },
+
+        headerShown: true,
+
+        headerStyle: {
+          backgroundColor: "#f0f2f5",
+        },
+
+        headerTitleStyle: {
+          fontWeight: "bold",
+        },
+
         tabBarIcon: ({ color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
@@ -34,8 +42,18 @@ export default function TabLayout() {
       })}
     >
       <Tabs.Screen name="Home" options={{ title: "Ballina" }} />
+
       <Tabs.Screen name="Profile" options={{ title: "Profili" }} />
+
       <Tabs.Screen name="QrScanner" options={{ title: "Skaneri" }} />
+
+      <Tabs.Screen
+        name="AvailableDates"
+        options={{
+          title: "Datat e lira",
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

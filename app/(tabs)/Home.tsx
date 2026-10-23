@@ -1,6 +1,7 @@
 import { getTerminet } from "@/javascript/employees/TerminetAPI";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRootNavigationState, useRouter } from "expo-router";
+
 import { useEffect, useState } from "react";
 import {
   Pressable,
@@ -87,6 +88,15 @@ const formatTimeRange = (isoString: string, totalMinutes: number): string => {
 export default function Home() {
   const router = useRouter();
 
+  const rootState = useRootNavigationState();
+
+  console.log(
+    "ROOT ROUTES:",
+    rootState?.routes?.map((route) => ({
+      name: route.name,
+      state: route.state?.routes?.map((child) => child.name),
+    })),
+  );
   // State
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(
     new Date(2026, 0, 1),
@@ -194,7 +204,7 @@ export default function Home() {
       {/* Navigation Quick Actions */}
       <Pressable
         style={styles.actionCard}
-       onPress={() => router.push("/skills")}
+        onPress={() => router.push("/skills")}
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconContainer}>
@@ -210,7 +220,7 @@ export default function Home() {
 
       <Pressable
         style={styles.actionCard}
-        onPress={() => router.push("/AvailableDates")}
+        onPress={() => router.push("/(tabs)/AvailableDates")}
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconContainer}>
