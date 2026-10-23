@@ -3,9 +3,9 @@ import { getPushToken } from "@/javascript/Notification";
 import { connectWebSocket } from "@/javascript/WebSocketClientConnection";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-
 export default function RootLayout() {
-  useEffect(() => {
+  // ... your useEffect initialization code ...
+ useEffect(() => {
     let mounted = true;
 
     const initializeApp = async () => {
@@ -39,16 +39,41 @@ export default function RootLayout() {
     };
   }, []);
 
-  return (
-    <Stack>
-      <Stack.Screen
-        name="LoginForm"
-        options={{ headerShown: false }}
-      />
+ return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: "#f0f2f5" },
+        headerTitleStyle: { fontWeight: "bold" },
+        headerTintColor: "#000",
+      }}
+    >
+      <Stack.Screen name="LoginForm" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
 
+      {/* Root stack screens — router.push() will now find these instantly */}
       <Stack.Screen
-        name="(tabs)"
-        options={{ headerShown: false }}
+        name="skills"
+        options={{
+          headerShown: true,
+          title: "Aftësitë",
+          headerBackTitle: "Kthehu",
+        }}
+      />
+      <Stack.Screen
+        name="AvailableDates"
+        options={{
+          headerShown: true,
+          title: "Kalendari",
+          headerBackTitle: "Kthehu",
+        }}
+      />
+      <Stack.Screen
+        name="Terminet"
+        options={{
+          headerShown: true,
+          title: "Terminet",
+          headerBackTitle: "Kthehu",
+        }}
       />
     </Stack>
   );

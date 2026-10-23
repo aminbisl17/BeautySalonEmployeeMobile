@@ -5,13 +5,15 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={({ route }) => ({
-        tabBarActiveTintColor: "#007AFF", // active tab color
-        tabBarInactiveTintColor: "#8e8e93", // inactive tab color
+        tabBarActiveTintColor: "#007AFF",
+        tabBarInactiveTintColor: "#8e8e93",
         tabBarStyle: {
           backgroundColor: "#fff",
           height: 60,
           paddingBottom: 5,
         },
+        // Keep tab headers visible so Home, Profile, and QrScanner show their headers!
+        headerShown: true, 
         headerStyle: { backgroundColor: "#f0f2f5" },
         headerTitleStyle: { fontWeight: "bold" },
         tabBarIcon: ({ color, size }) => {
@@ -31,46 +33,9 @@ export default function TabLayout() {
         },
       })}
     >
-      <Tabs.Screen
-        name="Profile"
-        options={{
-          title: "Profili",
-        }}
-      />
-
-      <Tabs.Screen
-        name="Home"
-        options={{
-          title: "Ballina",
-        }}
-      />
-      <Tabs.Screen
-        name="QrScanner"
-        options={{
-          title: "Skaneri",
-        }}
-      />
-      <Tabs.Screen
-        name="AvailableDates"
-        options={{
-          href: null,
-          title: "Kalendari",
-        }}
-      />
-      <Tabs.Screen
-        name="skills"
-        options={{
-          href: null,
-          title: "Aftesite",
-        }}
-      />
-
-      <Tabs.Screen
-        name="Terminet"
-        options={{
-          href: null,
-        }}
-      />
+      <Tabs.Screen name="Home" options={{ title: "Ballina" }} />
+      <Tabs.Screen name="Profile" options={{ title: "Profili" }} />
+      <Tabs.Screen name="QrScanner" options={{ title: "Skaneri" }} />
     </Tabs>
   );
 }

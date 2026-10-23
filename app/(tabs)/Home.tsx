@@ -194,7 +194,7 @@ export default function Home() {
       {/* Navigation Quick Actions */}
       <Pressable
         style={styles.actionCard}
-        onPress={() => router.push("/skills")}
+       onPress={() => router.push("/skills")}
       >
         <View style={styles.cardLeft}>
           <View style={styles.iconContainer}>
