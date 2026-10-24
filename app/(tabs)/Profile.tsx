@@ -1,8 +1,9 @@
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
 import { getData, updateData } from "@/javascript/employees/ProfileAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,8 +15,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Profile() {
+  const insets = useSafeAreaInsets();
+
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -154,7 +158,7 @@ export default function Profile() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={COLORS.green} />
         <Text style={styles.loadingText}>Po ngarkohet profili...</Text>
       </View>
     );
@@ -169,18 +173,24 @@ export default function Profile() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#4F46E5"
-          colors={["#4F46E5"]}
+          tintColor={COLORS.green}
+          colors={[COLORS.green]}
         />
       }
     >
-      {/* Profile Avatar Header */}
-      <View style={styles.profileHeaderCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {emri?.[0]}
-            {mbiemri?.[0]}
-          </Text>
+      {/* Header band */}
+      <View style={[styles.headerZone, { paddingTop: insets.top + 32 }]}>
+        <View style={styles.badgePill}>
+          <Text style={styles.badgePillText}>Profili</Text>
+        </View>
+
+        <View style={styles.avatarRing}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {emri?.[0]}
+              {mbiemri?.[0]}
+            </Text>
+          </View>
         </View>
 
         {!isEditing ? (
@@ -197,270 +207,276 @@ export default function Profile() {
         )}
       </View>
 
-      {/* Card Sections */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Të Dhënat e Llogarisë</Text>
+      <View style={styles.body}>
+        {/* Card Sections */}
+        <View style={styles.section}>
+          <View style={styles.groupCard}>
+            <Text style={styles.sectionTitle}>Të Dhënat e Llogarisë</Text>
 
-        <View style={styles.groupCard}>
-          {/* 1. Emri */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Emri</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[styles.value, styles.input]}
-                    value={emri}
-                    onChangeText={setEmri}
-                    placeholder="Vendos emrin"
-                    placeholderTextColor="#94A3B8"
-                  />
-                ) : (
-                  <Text style={styles.value}>
-                    {user?.emri || "E papërcaktuar"}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          {/* 2. Mbiemri */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="person-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Mbiemri</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[styles.value, styles.input]}
-                    value={mbiemri}
-                    onChangeText={setMbiemri}
-                    placeholder="Vendos mbiemrin"
-                    placeholderTextColor="#94A3B8"
-                  />
-                ) : (
-                  <Text style={styles.value}>
-                    {user?.mbiemri || "E papërcaktuar"}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          {/* 3. Emri i Përdoruesit */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="at-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Emri i Përdoruesit</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[styles.value, styles.input]}
-                    value={username}
-                    onChangeText={setUsername}
-                    placeholder="Vendos përdoruesin"
-                    placeholderTextColor="#94A3B8"
-                    autoCapitalize="none"
-                  />
-                ) : (
-                  <Text style={styles.value}>@{user?.username}</Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          {/* 4. Email */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="mail-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Adresa e Email-it</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[styles.value, styles.input]}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Vendos email-in"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                ) : (
-                  <Text style={styles.value}>
-                    {user?.email || "E papërcaktuar"}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          {/* 5. Numri i Telefonit */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="call-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Numri i Telefonit</Text>
-                {isEditing ? (
-                  <TextInput
-                    style={[styles.value, styles.input]}
-                    value={numriTelefonit}
-                    onChangeText={setNumriTelefonit}
-                    placeholder="Vendos numrin e telefonit"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="phone-pad"
-                  />
-                ) : (
-                  <Text style={styles.value}>
-                    {user?.numri_telefonit || "Nuk është dhënë"}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.separator} />
-
-          {/* 6. Fjalëkalimi */}
-          <View style={styles.row}>
-            <View style={styles.rowLeft}>
-              <Ionicons
-                name="lock-closed-outline"
-                size={18}
-                color="#4F46E5"
-                style={styles.icon}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Fjalëkalimi</Text>
-                {isEditing ? (
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {/* 1. Emri */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="person-outline"
+                  size={18}
+                  color={COLORS.green}
+                  style={styles.icon}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Emri</Text>
+                  {isEditing ? (
                     <TextInput
-                      style={[styles.value, styles.input, { flex: 1 }]}
-                      value={userpassword}
-                      onChangeText={setUserpassword}
-                      placeholder="Vendos fjalëkalimin e ri"
-                      placeholderTextColor="#94A3B8"
-                      secureTextEntry={!showPassword}
+                      style={[styles.value, styles.input]}
+                      value={emri}
+                      onChangeText={setEmri}
+                      placeholder="Vendos emrin"
+                      placeholderTextColor={COLORS.placeholder}
+                    />
+                  ) : (
+                    <Text style={styles.value}>
+                      {user?.emri || "E papërcaktuar"}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* 2. Mbiemri */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="person-outline"
+                  size={18}
+                  color={COLORS.green}
+                  style={styles.icon}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Mbiemri</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.value, styles.input]}
+                      value={mbiemri}
+                      onChangeText={setMbiemri}
+                      placeholder="Vendos mbiemrin"
+                      placeholderTextColor={COLORS.placeholder}
+                    />
+                  ) : (
+                    <Text style={styles.value}>
+                      {user?.mbiemri || "E papërcaktuar"}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* 3. Emri i Përdoruesit */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="at-outline"
+                  size={18}
+                  color={COLORS.green}
+                  style={styles.icon}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Emri i Përdoruesit</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.value, styles.input]}
+                      value={username}
+                      onChangeText={setUsername}
+                      placeholder="Vendos përdoruesin"
+                      placeholderTextColor={COLORS.placeholder}
                       autoCapitalize="none"
                     />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={{ paddingHorizontal: 8 }}
+                  ) : (
+                    <Text style={styles.value}>@{user?.username}</Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* 4. Email */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="mail-outline"
+                  size={18}
+                  color={COLORS.green}
+                  style={styles.icon}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Adresa e Email-it</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.value, styles.input]}
+                      value={email}
+                      onChangeText={setEmail}
+                      placeholder="Vendos email-in"
+                      placeholderTextColor={COLORS.placeholder}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                  ) : (
+                    <Text style={styles.value}>
+                      {user?.email || "E papërcaktuar"}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* 5. Numri i Telefonit */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="call-outline"
+                  size={18}
+                  color={COLORS.green}
+                  style={styles.icon}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Numri i Telefonit</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[styles.value, styles.input]}
+                      value={numriTelefonit}
+                      onChangeText={setNumriTelefonit}
+                      placeholder="Vendos numrin e telefonit"
+                      placeholderTextColor={COLORS.placeholder}
+                      keyboardType="phone-pad"
+                    />
+                  ) : (
+                    <Text style={styles.value}>
+                      {user?.numri_telefonit || "Nuk është dhënë"}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* 6. Fjalëkalimi */}
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={18}
+                  color={COLORS.green}
+                  style={styles.icon}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Fjalëkalimi</Text>
+                  {isEditing ? (
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
                     >
-                      <Ionicons
-                        name={showPassword ? "eye-off-outline" : "eye-outline"}
-                        size={18}
-                        color="#64748B"
+                      <TextInput
+                        style={[styles.value, styles.input, { flex: 1 }]}
+                        value={userpassword}
+                        onChangeText={setUserpassword}
+                        placeholder="Vendos fjalëkalimin e ri"
+                        placeholderTextColor={COLORS.placeholder}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
                       />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <Text style={styles.value}>••••••••</Text>
-                )}
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={{ paddingHorizontal: 8 }}
+                      >
+                        <Ionicons
+                          name={
+                            showPassword ? "eye-off-outline" : "eye-outline"
+                          }
+                          size={18}
+                          color={COLORS.muted}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <Text style={styles.value}>••••••••</Text>
+                  )}
+                </View>
               </View>
             </View>
           </View>
         </View>
-      </View>
 
-      {/* Action Buttons */}
-      <View style={{ gap: 10 }}>
-        {!isEditing ? (
-          <>
-            <TouchableOpacity
-              onPress={() => setIsEditing(true)}
-              activeOpacity={0.8}
-              style={styles.editButton}
-            >
-              <Ionicons
-                name="create-outline"
-                size={18}
-                color="#FFFFFF"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.editButtonText}>Ndrysho Të Dhënat</Text>
-            </TouchableOpacity>
+        {/* Action Buttons */}
+        <View style={styles.actions}>
+          {!isEditing ? (
+            <>
+              <TouchableOpacity
+                onPress={() => setIsEditing(true)}
+                activeOpacity={0.8}
+                style={styles.editButton}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={18}
+                  color="#FFFFFF"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.editButtonText}>Ndrysho Të Dhënat</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleLogout}
-              activeOpacity={0.8}
-              style={styles.logoutButton}
-            >
-              <Ionicons
-                name="log-out-outline"
-                size={18}
-                color="#EF4444"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.logoutText}>Dil nga Llogaria</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <>
-            <TouchableOpacity
-              onPress={handleSaveProfile}
-              disabled={saving}
-              activeOpacity={0.8}
-              style={styles.editButton}
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <Ionicons
-                    name="checkmark-outline"
-                    size={18}
-                    color="#FFFFFF"
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={styles.editButtonText}>Ruaj Ndryshimet</Text>
-                </>
-              )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleLogout}
+                activeOpacity={0.8}
+                style={styles.logoutButton}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color={COLORS.red}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.logoutText}>Dil nga Llogaria</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                onPress={handleSaveProfile}
+                disabled={saving}
+                activeOpacity={0.8}
+                style={styles.editButton}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons
+                      name="checkmark-outline"
+                      size={18}
+                      color="#FFFFFF"
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text style={styles.editButtonText}>Ruaj Ndryshimet</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={handleCancelEdit}
-              disabled={saving}
-              activeOpacity={0.8}
-              style={styles.cancelButton}
-            >
-              <Text style={styles.cancelText}>Anulo</Text>
-            </TouchableOpacity>
-          </>
-        )}
+              <TouchableOpacity
+                onPress={handleCancelEdit}
+                disabled={saving}
+                activeOpacity={0.8}
+                style={styles.cancelButton}
+              >
+                <Text style={styles.cancelText}>Anulo</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       </View>
     </ScrollView>
   );
@@ -469,123 +485,118 @@ export default function Profile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
   },
   loadingText: {
-    marginTop: 12,
-    color: "#64748B",
-    fontSize: 15,
-    fontWeight: "500",
+    marginTop: 14,
+    color: COLORS.muted,
+    fontSize: 12,
   },
 
-  /* Navigation Header */
-  navigationHeader: {
-    flexDirection: "row",
+  /* Header band (.termini-header) */
+  headerZone: {
     alignItems: "center",
+    backgroundColor: COLORS.black,
+    paddingHorizontal: 22,
+    paddingBottom: 74,
+  },
+  badgePill: {
     marginBottom: 20,
-    marginTop: 10,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-    borderRadius: 8,
-    backgroundColor: "#EEF2FF",
-  },
-  navigationTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-
-  /* Profile Avatar Header */
-  profileHeaderCard: {
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: RADIUS.pill,
+  },
+  badgePillText: {
+    color: COLORS.goldSoft,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.6,
+    textTransform: "uppercase",
+  },
+  avatarRing: {
+    padding: 5,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: 52,
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.green,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
-    shadowColor: "#4F46E5",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 3,
   },
   avatarText: {
-    color: "#FFFFFF",
+    color: COLORS.goldLight,
     fontSize: 26,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   name: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#0F172A",
+    color: "#F7F5EF",
+    fontSize: 30,
+    fontWeight: "500",
+    letterSpacing: -1.2,
+    textAlign: "center",
   },
   username: {
-    fontSize: 14,
-    color: "#64748B",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-
-  /* Primary Action Button Styles */
-  editButton: {
-    backgroundColor: "#4F46E5",
-    borderRadius: 10,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  editButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-
-  /* Card Sections */
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
+    marginTop: 6,
+    color: COLORS.goldSoft,
+    fontFamily: SERIF,
+    fontStyle: "italic",
     fontSize: 16,
-    fontWeight: "600",
-    color: "#475569",
-    marginBottom: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+
+  /* Body overlaps the header (.termini-container margin-top) */
+  body: {
+    marginHorizontal: 12,
+    marginTop: -34,
+  },
+
+  /* Card (.form-section-card) */
+  section: {
+    marginBottom: 18,
   },
   groupCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    paddingBottom: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    overflow: "hidden",
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.card,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    elevation: 3,
+  },
+  sectionTitle: {
+    paddingHorizontal: 20,
+    paddingTop: 22,
+    paddingBottom: 8,
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: -0.7,
   },
   row: {
     paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -596,62 +607,88 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   icon: {
-    marginRight: 14,
+    marginRight: 16,
   },
   label: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#64748B",
+    marginBottom: 3,
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 2,
   },
   value: {
-    fontSize: 15,
-    color: "#0F172A",
+    color: COLORS.text,
+    fontSize: 16,
     fontWeight: "500",
   },
+  // edit mode: boxed input like .input-box input
   input: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#4F46E5",
-    paddingVertical: 2,
-    marginTop: 2,
+    minHeight: 46,
+    marginTop: 6,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
   },
   separator: {
     height: 1,
-    backgroundColor: "#F1F5F9",
-    marginLeft: 48,
+    marginLeft: 54,
+    backgroundColor: COLORS.border,
   },
 
-  /* Action Buttons */
+  /* Buttons (.confirm-btn-primary / -secondary) */
+  actions: {
+    gap: 10,
+  },
+  editButton: {
+    minHeight: 54,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.green,
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  editButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.6,
+  },
   logoutButton: {
-    backgroundColor: "#FEF2F2",
-    borderRadius: 10,
-    paddingVertical: 14,
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#FEE2E2",
+    borderColor: COLORS.dangerBorder,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.dangerBg,
   },
   logoutText: {
-    color: "#EF4444",
-    fontSize: 15,
-    fontWeight: "600",
+    color: COLORS.red,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
   cancelButton: {
-    backgroundColor: "#F1F5F9",
-    borderRadius: 10,
-    paddingVertical: 14,
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderRadius: RADIUS.pill,
+    backgroundColor: "#EAE8E2",
   },
   cancelText: {
-    color: "#64748B",
-    fontSize: 15,
-    fontWeight: "600",
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
 });

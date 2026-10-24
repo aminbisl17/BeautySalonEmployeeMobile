@@ -1,3 +1,4 @@
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
 import { api, clearTenantCache } from "@/javascript/client";
 import { Ionicons } from "@expo/vector-icons";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -22,7 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const TENANT_TOKEN_KEY = "tenantToken";
 const VALIDATE_URL =
   "https://beautysalon-amin-2026-ghfzbxbqcvdfb2hf.austriaeast-01.azurewebsites.net/auth/login/company/validate";
-const PRIMARY = "#4F46E5";
+const PRIMARY = COLORS.green;
 const FRAME_SIZE = 260;
 const OTP_LENGTH = 6;
 const WELCOME_DURATION = 2500; // ms
@@ -223,7 +224,7 @@ export default function VerifyTenant() {
         ]}
       >
         <View style={styles.heroIcon}>
-          <Ionicons name="shield-checkmark" size={40} color={PRIMARY} />
+          <Ionicons name="shield-checkmark" size={40} color={COLORS.green} />
         </View>
 
         <Text style={styles.title}>Verify your tenant</Text>
@@ -239,9 +240,9 @@ export default function VerifyTenant() {
               pressed && styles.cardPressed,
             ]}
           >
-            <View style={[styles.cardIcon, { backgroundColor: "#EEF2FF" }]}>
-              <Ionicons name="qr-code-outline" size={26} color={PRIMARY} />
-            </View>
+           <View style={[styles.cardIcon, { backgroundColor: COLORS.greenLight }]}>
+  <Ionicons name="qr-code-outline" size={26} color={COLORS.green} />
+</View>
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>Scan QR code</Text>
               <Text style={styles.cardDesc}>
@@ -258,9 +259,10 @@ export default function VerifyTenant() {
               pressed && styles.cardPressed,
             ]}
           >
-            <View style={[styles.cardIcon, { backgroundColor: "#ECFDF5" }]}>
-              <Ionicons name="keypad-outline" size={26} color="#059669" />
-            </View>
+            <View style={[styles.cardIcon, { backgroundColor: COLORS.creamDark }]}>
+  <Ionicons name="keypad-outline" size={26} color={COLORS.gold} />
+</View>
+
             <View style={styles.cardText}>
               <Text style={styles.cardTitle}>Enter code manually</Text>
               <Text style={styles.cardDesc}>
@@ -450,16 +452,20 @@ export default function VerifyTenant() {
 const CORNER = 36;
 const CORNER_THICKNESS = 5;
 const MASK = "rgba(0,0,0,0.65)";
-
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  screen: { flex: 1, backgroundColor: "#F8FAFC", paddingHorizontal: 24 },
-  screenBg: { flex: 1, backgroundColor: "#F8FAFC" },
+  screen: {
+    flex: 1,
+    backgroundColor: COLORS.cream,
+    paddingHorizontal: 24,
+    justifyContent: "center",
+  },
+  screenBg: { flex: 1, backgroundColor: COLORS.cream },
 
   // Welcome
   welcomeScreen: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: COLORS.cream,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
@@ -467,83 +473,96 @@ const styles = StyleSheet.create({
   welcomeIcon: {
     width: 96,
     height: 96,
-    borderRadius: 32,
-    backgroundColor: PRIMARY,
+    borderRadius: RADIUS.card,
+    backgroundColor: COLORS.green,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 28,
-    shadowColor: PRIMARY,
-    shadowOpacity: 0.35,
+    shadowColor: COLORS.green,
+    shadowOpacity: 0.18,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
+    elevation: 5,
   },
-  welcomeLabel: { fontSize: 18, color: "#64748B", fontWeight: "500" },
+  welcomeLabel: {
+    fontSize: 12,
+    color: COLORS.muted,
+    fontWeight: "700",
+    letterSpacing: 2.5,
+    textTransform: "uppercase",
+  },
   welcomeName: {
-    fontSize: 34,
-    fontWeight: "800",
-    color: "#0F172A",
-    marginTop: 4,
+    fontFamily: SERIF,
+    fontSize: 36,
+    fontWeight: "400",
+    color: COLORS.black,
+    marginTop: 8,
     textAlign: "center",
   },
-  welcomeSub: { fontSize: 14, color: "#94A3B8", marginTop: 12 },
+  welcomeSub: { fontSize: 14, color: COLORS.muted, marginTop: 12 },
 
-  // Choose
+  // Choose method
   heroIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: "#EEF2FF",
+    width: 82,
+    height: 82,
+    borderRadius: RADIUS.card,
+    backgroundColor: COLORS.greenLight,
+    borderWidth: 1,
+    borderColor: COLORS.infoBorder,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     marginBottom: 24,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: SERIF,
+    fontSize: 32,
+    fontWeight: "400",
+    color: COLORS.black,
     textAlign: "center",
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: "#64748B",
+    color: COLORS.muted,
     textAlign: "center",
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 32,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   cards: { gap: 14 },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 18,
+    backgroundColor: COLORS.surface,
+    padding: 17,
+    borderRadius: RADIUS.card,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.06,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.black,
+    shadowOpacity: 0.035,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 1,
   },
-  cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
+  cardPressed: { transform: [{ scale: 0.985 }], opacity: 0.88 },
   cardIcon: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: RADIUS.control,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
   },
   cardText: { flex: 1 },
-  cardTitle: { fontSize: 16, fontWeight: "600", color: "#0F172A" },
-  cardDesc: { fontSize: 13, color: "#64748B", marginTop: 2 },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: COLORS.black },
+  cardDesc: { fontSize: 13, color: COLORS.muted, marginTop: 4, lineHeight: 19 },
 
-  // Camera
-  cameraScreen: { flex: 1, backgroundColor: "#000" },
-  mask: { flex: 1, backgroundColor: MASK },
+  // Camera scanner: intentionally dark, with the brand's gold framing
+  cameraScreen: { flex: 1, backgroundColor: COLORS.black },
+  mask: { flex: 1, backgroundColor: "rgba(17,19,17,0.72)" },
   maskTop: {
     alignItems: "center",
     justifyContent: "flex-end",
@@ -551,45 +570,58 @@ const styles = StyleSheet.create({
   },
   maskBottom: {},
   middleRow: { flexDirection: "row", height: FRAME_SIZE },
-  frame: { width: FRAME_SIZE, height: FRAME_SIZE },
-  scanTitle: { color: "#fff", fontSize: 22, fontWeight: "700" },
-  scanSubtitle: { color: "rgba(255,255,255,0.75)", fontSize: 14, marginTop: 6 },
-
+  frame: {
+    width: FRAME_SIZE,
+    height: FRAME_SIZE,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "rgba(215,194,157,0.28)",
+  },
+  scanTitle: {
+    color: COLORS.cream,
+    fontFamily: SERIF,
+    fontSize: 28,
+    fontWeight: "400",
+  },
+  scanSubtitle: {
+    color: "rgba(247,245,240,0.78)",
+    fontSize: 14,
+    marginTop: 8,
+  },
   corner: {
     position: "absolute",
     width: CORNER,
     height: CORNER,
-    borderColor: "#fff",
+    borderColor: COLORS.goldLight,
   },
   cornerTL: {
-    top: 0,
-    left: 0,
+    top: -1,
+    left: -1,
     borderTopWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
     borderTopLeftRadius: 18,
   },
   cornerTR: {
-    top: 0,
-    right: 0,
+    top: -1,
+    right: -1,
     borderTopWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
     borderTopRightRadius: 18,
   },
   cornerBL: {
-    bottom: 0,
-    left: 0,
+    bottom: -1,
+    left: -1,
     borderBottomWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
     borderBottomLeftRadius: 18,
   },
   cornerBR: {
-    bottom: 0,
-    right: 0,
+    bottom: -1,
+    right: -1,
     borderBottomWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
     borderBottomRightRadius: 18,
   },
-
   topBar: {
     position: "absolute",
     left: 20,
@@ -598,59 +630,64 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   roundButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(247,245,240,0.13)",
+    borderWidth: 1,
+    borderColor: "rgba(215,194,157,0.42)",
     alignItems: "center",
     justifyContent: "center",
   },
-  roundButtonActive: { backgroundColor: PRIMARY },
+  roundButtonActive: { backgroundColor: COLORS.green, borderColor: COLORS.gold },
   bottomBar: { position: "absolute", left: 0, right: 0, alignItems: "center" },
   glassButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(247,245,240,0.13)",
+    borderWidth: 1,
+    borderColor: "rgba(215,194,157,0.5)",
     paddingVertical: 14,
     paddingHorizontal: 22,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
   },
-  glassButtonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  glassButtonText: { color: COLORS.cream, fontSize: 14, fontWeight: "600" },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(17,19,17,0.78)",
     alignItems: "center",
     justifyContent: "center",
   },
-  loadingText: { color: "#fff", marginTop: 12, fontSize: 15 },
+  loadingText: { color: COLORS.cream, marginTop: 12, fontSize: 15 },
 
-  // Manual
+  // Manual verification
   manualContent: { paddingHorizontal: 24 },
   backCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     alignItems: "center",
     justifyContent: "center",
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#334155",
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.black,
     marginBottom: 8,
     marginTop: 8,
+    letterSpacing: 0.2,
   },
   inputWrap: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 14,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.control,
     paddingHorizontal: 14,
     marginBottom: 20,
   },
@@ -659,7 +696,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingLeft: 10,
     fontSize: 16,
-    color: "#0F172A",
+    color: COLORS.black,
   },
   otpRow: {
     flexDirection: "row",
@@ -669,32 +706,38 @@ const styles = StyleSheet.create({
   otpBox: {
     width: 48,
     height: 58,
-    borderRadius: 14,
-    backgroundColor: "#fff",
+    borderRadius: RADIUS.control,
+    backgroundColor: COLORS.surface,
     borderWidth: 1.5,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  otpBoxFilled: { borderColor: "#A5B4FC", backgroundColor: "#F5F7FF" },
-  otpBoxActive: { borderColor: PRIMARY },
-  otpChar: { fontSize: 24, fontWeight: "700", color: "#0F172A" },
+  otpBoxFilled: { borderColor: COLORS.gold, backgroundColor: COLORS.creamDark },
+  otpBoxActive: { borderColor: COLORS.green, backgroundColor: COLORS.greenLight },
+  otpChar: {
+    fontFamily: SERIF,
+    fontSize: 24,
+    fontWeight: "400",
+    color: COLORS.black,
+  },
   hiddenInput: { position: "absolute", opacity: 0, height: 0, width: 0 },
-
   primaryButton: {
-    backgroundColor: PRIMARY,
+    backgroundColor: COLORS.green,
     height: 56,
-    borderRadius: 14,
+    borderRadius: RADIUS.control,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: PRIMARY,
-    shadowOpacity: 0.3,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    shadowColor: COLORS.green,
+    shadowOpacity: 0.16,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    elevation: 3,
   },
-  primaryButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  disabled: { opacity: 0.45, shadowOpacity: 0 },
+  primaryButtonText: { color: COLORS.cream, fontSize: 15, fontWeight: "700", letterSpacing: 0.3 },
+  disabled: { opacity: 0.42, shadowOpacity: 0 },
   linkButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -703,5 +746,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 12,
   },
-  linkButtonText: { color: PRIMARY, fontSize: 15, fontWeight: "600" },
+  linkButtonText: { color: COLORS.green, fontSize: 14, fontWeight: "700" },
 });

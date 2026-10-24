@@ -1,10 +1,9 @@
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
 import { getTerminet } from "@/javascript/employees/TerminetAPI";
+import { subscribeEmployeeAppointments } from "@/javascript/WebSocketClientConnection";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-
-import { subscribeEmployeeAppointments } from "@/javascript/WebSocketClientConnection";
-
 import {
   ActivityIndicator,
   FlatList,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- Types ---
 interface Attribute {
@@ -63,6 +63,8 @@ interface Appointment {
 }
 
 export default function Terminet() {
+  const insets = useSafeAreaInsets();
+
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -70,7 +72,7 @@ export default function Terminet() {
 
   useFocusEffect(
     useCallback(() => {
-      let subscription = null;
+      let subscription: { unsubscribe: () => void } | null = null;
 
       const setup = async () => {
         try {
@@ -79,7 +81,7 @@ export default function Terminet() {
           await loadTerminet();
 
           subscription = await subscribeEmployeeAppointments(
-            (updatedAppointments) => {
+            (updatedAppointments: Appointment[]) => {
               setAppointments(updatedAppointments);
             },
           );
@@ -156,28 +158,36 @@ export default function Terminet() {
 
     return (
       <View style={styles.cardGroupOuter}>
-        <View style={[styles.currentCard, styles.cardActiveShadow]}>
+        <View style={styles.currentCard}>
           {/* Header Row: Client Name & Date */}
           <View style={styles.currentHeaderRow}>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.currentDateRange}>
-                {item.client.emri} {item.client.mbiemri}
-              </Text>
-            </View>
-            <Text style={styles.detailTimeText}>
+            <Text style={styles.clientName} numberOfLines={2}>
+              {item.client.emri} {item.client.mbiemri}
+            </Text>
+          </View>
+
+          <View style={styles.datePill}>
+            <Ionicons name="calendar-outline" size={13} color={COLORS.green} />
+            <Text style={styles.datePillText}>
               {formatDate(item.data_caktimit)}
             </Text>
           </View>
 
           {/* Client Contact */}
-          <Text style={styles.breakText}>📞 {item.client.numri_telefonit}</Text>
+          <View style={styles.contactRow}>
+            <Ionicons name="call-outline" size={14} color={COLORS.muted} />
+            <Text style={styles.breakText}>{item.client.numri_telefonit}</Text>
+          </View>
           {item.client.email ? (
-            <Text style={styles.breakText}>✉️ {item.client.email}</Text>
+            <View style={styles.contactRow}>
+              <Ionicons name="mail-outline" size={14} color={COLORS.muted} />
+              <Text style={styles.breakText}>{item.client.email}</Text>
+            </View>
           ) : null}
           {item.pershkrimi ? (
-            <Text style={styles.serviceDescription}>
-              Shënim: {item.pershkrimi}
-            </Text>
+            <View style={styles.noteBox}>
+              <Text style={styles.noteText}>Shënim: {item.pershkrimi}</Text>
+            </View>
           ) : null}
 
           {/* Services Section */}
@@ -232,17 +242,29 @@ export default function Terminet() {
                           {service.emri_sherbimit}
                         </Text>
                         <View style={styles.metaRow}>
+                          <Ionicons
+                            name="time-outline"
+                            size={12}
+                            color={COLORS.muted}
+                          />
                           <Text style={styles.metaText}>
-                            ⏱ {detail.kohezgjatja} min
+                            {detail.kohezgjatja} min
                           </Text>
-                          {attributesList.length > 0 && (
+                        </View>
+                        {attributesList.length > 0 && (
+                          <View style={styles.metaRow}>
+                            <Ionicons
+                              name={isExpanded ? "chevron-up" : "chevron-down"}
+                              size={12}
+                              color={COLORS.green}
+                            />
                             <Text style={styles.attributesToggleText}>
                               {isExpanded
-                                ? "▼ Fshih Atributet"
-                                : "▶ Shfaq Atributet"}
+                                ? "Fshih Atributet"
+                                : "Shfaq Atributet"}
                             </Text>
-                          )}
-                        </View>
+                          </View>
+                        )}
                       </View>
 
                       {/* Service Price */}
@@ -308,7 +330,7 @@ export default function Terminet() {
 
             {/* Total Footer */}
             <View style={styles.actionButtons}>
-              <Text style={styles.innerSectionTitle}>Çmimi Total:</Text>
+              <Text style={styles.innerSectionTitle}>ÇMIMI TOTAL</Text>
               <Text style={styles.priceText}>{totalAmount.toFixed(2)} €</Text>
             </View>
           </View>
@@ -319,45 +341,58 @@ export default function Terminet() {
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        <View style={styles.header}>
-          <Pressable
-            style={styles.backButton}
-            onPress={() => router.push("/Home")}
-          >
-            <Ionicons name="arrow-back" size={22} color="#4F46E5" />
-          </Pressable>
+      <ScrollView
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        {/* Header band */}
+        <View style={[styles.headerZone, { paddingTop: insets.top + 16 }]}>
+          <View style={styles.headerTopRow}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed && styles.backButtonPressed,
+              ]}
+              onPress={() => router.push("/Home")}
+              accessibilityRole="button"
+              accessibilityLabel="Kthehu"
+            >
+              <Ionicons name="arrow-back" size={20} color={COLORS.goldLight} />
+            </Pressable>
+          </View>
 
-          <Text style={styles.title}>Kthehu</Text>
+          <View style={styles.badgePill}>
+            <Text style={styles.badgePillText}>Terminet e caktuara</Text>
+          </View>
+          <Text style={styles.headerTitle}>Terminet</Text>
+          <Text style={styles.headerTitleSerif}>tuaja</Text>
         </View>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Terminet</Text>
+        {/* Body overlaps the header */}
+        <View style={styles.body}>
+          {loading ? (
+            <ActivityIndicator
+              color={COLORS.green}
+              size="large"
+              style={{ marginTop: 40 }}
+            />
+          ) : (
+            <FlatList
+              data={appointments}
+              renderItem={renderAppointmentItem}
+              keyExtractor={(item) => item.id_terminit.toString()}
+              scrollEnabled={false}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.noSkillsText}>
+                    Nuk ka termine të caktuara.
+                  </Text>
+                </View>
+              }
+            />
+          )}
         </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>TERMINET E CAKTUARA</Text>
-        </View>
-
-        {loading ? (
-          <ActivityIndicator
-            color="#4F46E5"
-            size="large"
-            style={{ marginTop: 20 }}
-          />
-        ) : (
-          <FlatList
-            data={appointments}
-            renderItem={renderAppointmentItem}
-            keyExtractor={(item) => item.id_terminit.toString()}
-            scrollEnabled={false}
-            ListEmptyComponent={
-              <Text style={styles.noSkillsText}>
-                Nuk ka termine të caktuara.
-              </Text>
-            }
-          />
-        )}
       </ScrollView>
     </View>
   );
@@ -366,158 +401,218 @@ export default function Terminet() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
-  header: {
-    flexDirection: "row",
+
+  /* Header band (.termini-header) */
+  headerZone: {
     alignItems: "center",
-    marginBottom: 20,
-    marginTop: 10,
+    backgroundColor: COLORS.black,
+    paddingHorizontal: 22,
+    paddingBottom: 74,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0F172A",
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#475569",
+  headerTopRow: {
+    alignSelf: "stretch",
+    flexDirection: "row",
     marginBottom: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+  },
+  backButtonPressed: {
+    transform: [{ scale: 0.92 }],
+  },
+  badgePill: {
+    marginBottom: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: RADIUS.pill,
+  },
+  badgePillText: {
+    color: COLORS.goldSoft,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.6,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
   },
-  innerSectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1E293B",
+  headerTitle: {
+    color: "#F7F5EF",
+    fontSize: 42,
+    fontWeight: "500",
+    letterSpacing: -2.5,
+    lineHeight: 42,
+    textAlign: "center",
   },
+  headerTitleSerif: {
+    fontFamily: SERIF,
+    fontStyle: "italic",
+    fontWeight: "400",
+    color: COLORS.goldSoft,
+    fontSize: 42,
+    letterSpacing: -1.7,
+    lineHeight: 46,
+    textAlign: "center",
+  },
+
+  /* Body overlaps the header (.termini-container margin-top) */
+  body: {
+    marginHorizontal: 12,
+    marginTop: -34,
+  },
+
+  /* Appointment card (.form-section-card) */
   cardGroupOuter: {
-    marginBottom: 10,
+    marginBottom: 16,
   },
   currentCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    borderRadius: RADIUS.card,
+    paddingTop: 22,
+    paddingHorizontal: 18,
+    paddingBottom: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  cardActiveShadow: {
-    borderColor: "#C7D2FE",
-    shadowColor: "#4F46E5",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    elevation: 3,
   },
   currentHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  headerTitleContainer: {
+  clientName: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: -0.7,
+  },
+  datePill: {
+    alignSelf: "flex-start",
     flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.greenLight,
   },
-  currentDateRange: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1E293B",
-  },
-  detailTimeText: {
-    fontSize: 13,
-    color: "#334155",
-    marginTop: 2,
-  },
-  breakText: {
+  datePillText: {
+    color: COLORS.green,
     fontSize: 12,
-    color: "#64748B",
-    marginTop: 1,
+    fontWeight: "700",
   },
-  serviceDescription: {
-    fontSize: 12,
-    color: "#64748B",
+  contactRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     marginTop: 4,
   },
+  breakText: {
+    flexShrink: 1,
+    color: COLORS.muted,
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  noteBox: {
+    marginTop: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    backgroundColor: COLORS.cream,
+  },
+  noteText: {
+    color: COLORS.muted,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+
+  /* Services */
   skillsContainer: {
-    marginTop: 16,
-    paddingTop: 14,
+    marginTop: 18,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.border,
   },
   skillsHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   skillsTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1E293B",
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   countBadge: {
-    backgroundColor: "#EEF2FF",
+    minWidth: 24,
+    height: 24,
     paddingHorizontal: 7,
-    paddingVertical: 2,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 12,
-    marginLeft: "auto",
+    backgroundColor: COLORS.green,
   },
   countBadgeText: {
+    color: COLORS.goldLight,
     fontSize: 11,
-    fontWeight: "700",
-    color: "#4F46E5",
+    fontWeight: "800",
   },
   servicesList: {
     gap: 10,
   },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-    borderRadius: 8,
-    backgroundColor: "#EEF2FF",
-  },
   skillRowContainer: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 8,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
   },
   skillRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
   },
   serviceImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: "#E2E8F0",
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: COLORS.creamDark,
   },
   skillImagePlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: "#EEF2FF",
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: COLORS.creamDark,
     justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
   },
   placeholderText: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: "#94A3B8",
+    color: COLORS.light,
+    fontSize: 8,
+    fontWeight: "800",
+    letterSpacing: 0.8,
     textAlign: "center",
   },
   skillInfo: {
@@ -527,63 +622,65 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   skillName: {
+    color: COLORS.text,
     fontSize: 14,
-    fontWeight: "600",
-    color: "#1E293B",
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginTop: 3,
+    gap: 5,
+    marginTop: 4,
   },
   metaText: {
-    fontSize: 12,
-    color: "#64748B",
-    fontWeight: "500",
-  },
-  attributesToggleText: {
+    color: COLORS.muted,
     fontSize: 11,
     fontWeight: "600",
-    color: "#4F46E5",
+  },
+  attributesToggleText: {
+    color: COLORS.green,
+    fontSize: 11,
+    fontWeight: "700",
   },
   attributePriceContainer: {
     alignItems: "flex-end",
   },
   skillPrice: {
-    fontSize: 13,
+    color: COLORS.green,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#4F46E5",
-    marginTop: 2,
+    letterSpacing: -0.3,
   },
   attributeOriginalPrice: {
+    color: COLORS.light,
     fontSize: 10,
-    color: "#94A3B8",
     textDecorationLine: "line-through",
   },
+
+  /* Attributes */
   attributesSection: {
     paddingHorizontal: 12,
-    paddingBottom: 10,
-    paddingTop: 8,
+    paddingTop: 10,
+    paddingBottom: 12,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    backgroundColor: "#FFFFFF",
+    borderTopColor: COLORS.border,
+    backgroundColor: COLORS.cream,
   },
   attributesSectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#64748B",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 6,
+    marginBottom: 8,
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   attributeCard: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 6,
-    padding: 8,
     marginBottom: 6,
+    padding: 10,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: COLORS.border,
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
   },
   attributeMainInfo: {
     flexDirection: "row",
@@ -591,52 +688,77 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   attributeLeft: {
+    flexShrink: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
   },
   attributeName: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#1E293B",
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: "700",
   },
   attributeDuration: {
+    color: COLORS.muted,
     fontSize: 11,
-    color: "#64748B",
   },
   attributePrice: {
-    fontSize: 12,
+    color: COLORS.green,
+    fontSize: 13,
     fontWeight: "700",
-    color: "#0F172A",
   },
   attributeDescription: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 2,
+    marginTop: 3,
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   noAttributesText: {
+    color: COLORS.muted,
     fontSize: 12,
-    color: "#94A3B8",
     fontStyle: "italic",
   },
+
+  /* Total (.confirm-total) */
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    marginTop: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: COLORS.greenLight,
+  },
+  innerSectionTitle: {
+    color: COLORS.green,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   priceText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#4F46E5",
+    color: COLORS.green,
+    fontSize: 24,
+    fontWeight: "600",
+    letterSpacing: -0.9,
+  },
+
+  /* Empty state (.empty-state) */
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 150,
+    padding: 24,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "rgba(36, 72, 58, 0.22)",
+    borderRadius: 20,
+    backgroundColor: COLORS.cream,
   },
   noSkillsText: {
-    fontSize: 13,
-    color: "#94A3B8",
-    fontStyle: "italic",
-    paddingVertical: 8,
+    color: COLORS.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

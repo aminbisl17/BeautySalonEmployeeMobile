@@ -1,57 +1,76 @@
+
+import { COLORS } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor: "#007AFF",
-        tabBarInactiveTintColor: "#8e8e93",
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.goldLight,
+        tabBarInactiveTintColor: "rgba(247, 245, 240, 0.48)",
 
         tabBarStyle: {
-          backgroundColor: "#fff",
-          height: 60,
-          paddingBottom: 5,
+          backgroundColor: COLORS.black,
+          borderTopWidth: 1,
+          borderTopColor: "rgba(182, 150, 99, 0.18)",
+          height: 78,
+          paddingTop: 9,
+          paddingBottom: 10,
         },
 
-        headerShown: true,
-
-        headerStyle: {
-          backgroundColor: "#f0f2f5",
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "700",
+          letterSpacing: 0.5,
+          marginTop: 3,
         },
 
-        headerTitleStyle: {
-          fontWeight: "bold",
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
-
-        tabBarIcon: ({ color, size }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-
-          if (route.name === "Home") {
-            iconName = "home-outline";
-          } else if (route.name === "QrScanner") {
-            iconName = "barcode";
-          } else if (route.name === "Profile") {
-            iconName = "person-outline";
-          } else {
-            iconName = "ellipse-outline";
-          }
-
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
-      })}
+      }}
     >
-      <Tabs.Screen name="Home" options={{ title: "Ballina" }} />
-
-      <Tabs.Screen name="Profile" options={{ title: "Profili" }} />
-
-      <Tabs.Screen name="QrScanner" options={{ title: "Skaneri" }} />
+      <Tabs.Screen
+        name="Profile"
+        options={{
+          title: "Profili",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "person" : "person-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
 
       <Tabs.Screen
-        name="AvailableDates"
+        name="Home"
         options={{
-          title: "Datat e lira",
-          href: null,
+          title: "Ballina",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "grid" : "grid-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="QrScanner"
+        options={{
+          title: "Skaneri",
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons
+              name={focused ? "qr-code" : "qr-code-outline"}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
     </Tabs>

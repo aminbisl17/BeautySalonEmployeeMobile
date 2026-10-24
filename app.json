@@ -2,7 +2,7 @@
 {
   "expo": {
     "name": "beautysalonemployeemobile",
-    "slug": "beautysalonemployeemobile",
+    "slug": "my-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -49,11 +49,7 @@
       "expo-notifications"
     ],
 
-    "extra": {
-      "eas": {
-        "projectId": "84838d65-e1b6-42f8-a611-7ae56e842325"
-      }
-    },
+   
 
     "experiments": {
       "typedRoutes": true,

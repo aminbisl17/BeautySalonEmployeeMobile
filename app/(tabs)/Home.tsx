@@ -1,7 +1,7 @@
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
 import { getTerminet } from "@/javascript/employees/TerminetAPI";
 import { Ionicons } from "@expo/vector-icons";
-import { useRootNavigationState, useRouter } from "expo-router";
-
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Pressable,
@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const DAYS_HEADER = ["Hën", "Mar", "Mër", "Enj", "Pre", "Sht", "Die"];
 
@@ -66,6 +67,13 @@ const formatDateString = (date: Date): string => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+// Parse "YYYY-MM-DD" as a LOCAL date (new Date("YYYY-MM-DD") is parsed as UTC
+// and can show the previous day in some timezones)
+const parseDateString = (dateStr: string): Date => {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
+
 // Helper to format ISO time to HH:MM string and calculate end time based on minutes duration
 const formatTimeRange = (isoString: string, totalMinutes: number): string => {
   const startDate = new Date(isoString);
@@ -87,21 +95,13 @@ const formatTimeRange = (isoString: string, totalMinutes: number): string => {
 
 export default function Home() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
-  const rootState = useRootNavigationState();
-
-  console.log(
-    "ROOT ROUTES:",
-    rootState?.routes?.map((route) => ({
-      name: route.name,
-      state: route.state?.routes?.map((child) => child.name),
-    })),
-  );
   // State
-  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(
-    new Date(2026, 0, 1),
-  ); // Jan 2026 based on data
-  const [selectedDate, setSelectedDate] = useState<string>("2026-01-19");
+  const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<string>(
+    formatDateString(new Date()),
+  );
   const [occupiedDates, setOccupiedDates] = useState<
     Record<string, OccupiedDateInfo>
   >({});
@@ -150,11 +150,11 @@ export default function Home() {
 
       setOccupiedDates(map);
 
-      // Automatically select the first appointment's date if available
-      const dates = Object.keys(map);
+      // Automatically select the earliest appointment date if available
+      const dates = Object.keys(map).sort();
       if (dates.length > 0) {
         setSelectedDate(dates[0]);
-        setCurrentMonthDate(new Date(dates[0]));
+        setCurrentMonthDate(parseDateString(dates[0]));
       }
     } catch (err) {
       console.error("Error fetching appointments:", err);
@@ -200,155 +200,191 @@ export default function Home() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
+      bounces={false}
     >
-      {/* Navigation Quick Actions */}
-      <Pressable
-        style={styles.actionCard}
-        onPress={() => router.push("/skills")}
-      >
-        <View style={styles.cardLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="color-palette-outline" size={22} color="#4F46E5" />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>Aftësitë</Text>
-            <Text style={styles.subtitle}>Menaxhoni aftësitë</Text>
-          </View>
+      {/* Header band */}
+      <View style={[styles.headerZone, { paddingTop: insets.top + 32 }]}>
+        <View style={styles.badgePill}>
+          <Text style={styles.badgePillText}>Portali i Stafit</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-      </Pressable>
+        <Text style={styles.headerTitle}>Terminet</Text>
+        <Text style={styles.headerTitleSerif}>tuaja</Text>
+        <Text style={styles.headerSubtitle}>
+          Shihni orarin, menaxhoni aftësitë dhe disponueshmërinë.
+        </Text>
+      </View>
 
-      <Pressable
-        style={styles.actionCard}
-        onPress={() => router.push("/(tabs)/AvailableDates")}
-      >
-        <View style={styles.cardLeft}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="time-outline" size={22} color="#4F46E5" />
-          </View>
-          <View style={styles.textContainer}>
-            <Text style={styles.title}>Disponueshmëria</Text>
-            <Text style={styles.subtitle}>
-              Caktoni apo ndryshoni orarin e punës
-            </Text>
-          </View>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-      </Pressable>
-
-      {/* Calendar Card */}
-      <View style={styles.calendarCard}>
-        <View style={styles.calendarHeader}>
-          <View style={styles.calendarTitleRow}>
-            <Ionicons
-              name="calendar-outline"
-              size={20}
-              color="#4F46E5"
-              style={{ marginRight: 8 }}
-            />
-            <Text style={styles.calendarMonthTitle}>
-              {monthYearLabel.charAt(0).toUpperCase() + monthYearLabel.slice(1)}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.fullCalendarButton}
-            onPress={() => router.push("/Terminet")}
-          >
-            <Text style={styles.fullCalendarText}>Shiko të gjitha</Text>
-            <Ionicons name="arrow-forward" size={14} color="#4F46E5" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Days Header */}
-        <View style={styles.daysHeaderRow}>
-          {DAYS_HEADER.map((day, idx) => (
-            <Text key={idx} style={styles.dayHeaderCell}>
-              {day}
-            </Text>
-          ))}
-        </View>
-
-        {/* Dynamic Calendar Grid */}
-        <View style={styles.calendarGrid}>
-          {getDaysInMonthGrid().map((dateStr, index) => {
-            if (!dateStr) {
-              return <View key={`empty-${index}`} style={styles.dayCell} />;
-            }
-
-            const dayNum = parseInt(dateStr.split("-")[2], 10);
-            const isOccupied = !!occupiedDates[dateStr];
-            const isSelected = selectedDate === dateStr;
-
-            return (
-              <TouchableOpacity
-                key={dateStr}
-                style={[styles.dayCell, isSelected && styles.dayCellSelected]}
-                onPress={() => setSelectedDate(dateStr)}
-              >
-                <Text
-                  style={[
-                    styles.dayNumber,
-                    isSelected && styles.dayNumberSelected,
-                  ]}
-                >
-                  {dayNum}
-                </Text>
-
-                {isOccupied && (
-                  <View
-                    style={[
-                      styles.occupiedDot,
-                      isSelected && styles.occupiedDotSelected,
-                    ]}
-                  />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* Calendar Legend */}
-        <View style={styles.legendContainer}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: "#EF4444" }]} />
-            <Text style={styles.legendText}>Data me termine</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: "#E2E8F0" }]} />
-            <Text style={styles.legendText}>E lirë</Text>
-          </View>
-        </View>
-
-        {/* Selected Day Details Box */}
-        <View style={styles.dayDetailsBox}>
-          <Text style={styles.detailsTitle}>
-            Terminet më{" "}
-            {selectedDate ? selectedDate.split("-").reverse().join(".") : "-"}
-          </Text>
-
-          {occupiedDates[selectedDate] ? (
-            <View style={styles.appointmentsList}>
-              {occupiedDates[selectedDate].appointments.map((apt, i) => (
-                <View
-                  key={apt.id_terminit || i}
-                  style={styles.appointmentBadge}
-                >
-                  <Ionicons name="person" size={14} color="#4F46E5" />
-                  <Text style={styles.appointmentText}>
-                    {apt.client
-                      ? `${apt.client.emri} ${apt.client.mbiemri}`
-                      : "Klient"}{" "}
-                    - {occupiedDates[selectedDate].times[i]}
-                  </Text>
-                </View>
-              ))}
+      <View style={styles.body}>
+        {/* Navigation Quick Actions */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.actionCard,
+            pressed && styles.actionCardPressed,
+          ]}
+          onPress={() => router.push("/skills")}
+        >
+          <View style={styles.cardLeft}>
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="color-palette-outline"
+                size={22}
+                color={COLORS.goldLight}
+              />
             </View>
-          ) : (
-            <Text style={styles.noAppointmentsText}>
-              Nuk ka termine të zëna për këtë datë.
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>Aftësitë</Text>
+              <Text style={styles.subtitle}>Menaxhoni aftësitë</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.light} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.actionCard,
+            pressed && styles.actionCardPressed,
+          ]}
+          onPress={() => router.push("/AvailableDates")}
+        >
+          <View style={styles.cardLeft}>
+            <View style={styles.iconContainer}>
+              <Ionicons
+                name="time-outline"
+                size={22}
+                color={COLORS.goldLight}
+              />
+            </View>
+            <View style={styles.textContainer}>
+              <Text style={styles.title}>Disponueshmëria</Text>
+              <Text style={styles.subtitle}>
+                Caktoni apo ndryshoni orarin e punës
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={COLORS.light} />
+        </Pressable>
+
+        {/* Calendar Card */}
+        <View style={styles.calendarCard}>
+          <View style={styles.calendarHeader}>
+            <View style={styles.calendarTitleRow}>
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={COLORS.green}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.calendarMonthTitle}>
+                {monthYearLabel.charAt(0).toUpperCase() +
+                  monthYearLabel.slice(1)}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={styles.fullCalendarButton}
+              onPress={() => router.push("/Terminet")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.fullCalendarText}>Shiko të gjitha</Text>
+              <Ionicons name="arrow-forward" size={14} color={COLORS.green} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Days Header */}
+          <View style={styles.daysHeaderRow}>
+            {DAYS_HEADER.map((day, idx) => (
+              <Text key={idx} style={styles.dayHeaderCell}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          {/* Dynamic Calendar Grid */}
+          <View style={styles.calendarGrid}>
+            {getDaysInMonthGrid().map((dateStr, index) => {
+              if (!dateStr) {
+                return <View key={`empty-${index}`} style={styles.dayCell} />;
+              }
+
+              const dayNum = parseInt(dateStr.split("-")[2], 10);
+              const isOccupied = !!occupiedDates[dateStr];
+              const isSelected = selectedDate === dateStr;
+
+              return (
+                <TouchableOpacity
+                  key={dateStr}
+                  style={[styles.dayCell, isSelected && styles.dayCellSelected]}
+                  onPress={() => setSelectedDate(dateStr)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.dayNumber,
+                      isSelected && styles.dayNumberSelected,
+                    ]}
+                  >
+                    {dayNum}
+                  </Text>
+
+                  {isOccupied && (
+                    <View
+                      style={[
+                        styles.occupiedDot,
+                        isSelected && styles.occupiedDotSelected,
+                      ]}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Calendar Legend */}
+          <View style={styles.legendContainer}>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: COLORS.gold }]}
+              />
+              <Text style={styles.legendText}>Data me termine</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View
+                style={[styles.legendDot, { backgroundColor: COLORS.creamDark }]}
+              />
+              <Text style={styles.legendText}>E lirë</Text>
+            </View>
+          </View>
+
+          {/* Selected Day Details Box */}
+          <View style={styles.dayDetailsBox}>
+            <Text style={styles.detailsTitle}>
+              Terminet më{" "}
+              {selectedDate ? selectedDate.split("-").reverse().join(".") : "-"}
             </Text>
-          )}
+
+            {occupiedDates[selectedDate] ? (
+              <View style={styles.appointmentsList}>
+                {occupiedDates[selectedDate].appointments.map((apt, i) => (
+                  <View
+                    key={apt.id_terminit || i}
+                    style={styles.appointmentBadge}
+                  >
+                    <Ionicons name="person" size={14} color={COLORS.green} />
+                    <Text style={styles.appointmentText}>
+                      {apt.client
+                        ? `${apt.client.emri} ${apt.client.mbiemri}`
+                        : "Klient"}{" "}
+                      - {occupiedDates[selectedDate].times[i]}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noAppointmentsText}>
+                Nuk ka termine të zëna për këtë datë.
+              </Text>
+            )}
+          </View>
         </View>
       </View>
     </ScrollView>
@@ -358,22 +394,87 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
+
+  /* Header band (.termini-header) */
+  headerZone: {
+    alignItems: "center",
+    backgroundColor: COLORS.black,
+    paddingHorizontal: 22,
+    paddingBottom: 74,
+  },
+  badgePill: {
+    marginBottom: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: RADIUS.pill,
+  },
+  badgePillText: {
+    color: COLORS.goldSoft,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.6,
+    textTransform: "uppercase",
+  },
+  headerTitle: {
+    color: "#F7F5EF",
+    fontSize: 42,
+    fontWeight: "500",
+    letterSpacing: -2.5,
+    lineHeight: 42,
+    textAlign: "center",
+  },
+  headerTitleSerif: {
+    fontFamily: SERIF,
+    fontStyle: "italic",
+    fontWeight: "400",
+    color: COLORS.goldSoft,
+    fontSize: 42,
+    letterSpacing: -1.7,
+    lineHeight: 46,
+    textAlign: "center",
+  },
+  headerSubtitle: {
+    maxWidth: 320,
+    marginTop: 22,
+    color: "rgba(255, 255, 255, 0.66)",
+    fontSize: 14,
+    lineHeight: 24,
+    textAlign: "center",
+  },
+
+  /* Body overlaps the header (.termini-container margin-top) */
+  body: {
+    marginHorizontal: 12,
+    marginTop: -34,
+  },
+
+  /* Quick action cards */
   actionCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    borderRadius: RADIUS.card,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 16,
+    borderColor: COLORS.border,
+    marginBottom: 14,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    elevation: 3,
+  },
+  actionCardPressed: {
+    transform: [{ scale: 0.985 }],
   },
   cardLeft: {
     flexDirection: "row",
@@ -383,8 +484,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: "#EEF2FF",
+    borderRadius: 22,
+    backgroundColor: COLORS.green,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 14,
@@ -393,70 +494,80 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
+    color: COLORS.text,
     fontSize: 16,
-    fontWeight: "600",
-    color: "#0F172A",
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
+    marginTop: 3,
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
+
+  /* Calendar card */
   calendarCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    borderRadius: RADIUS.card,
+    paddingTop: 22,
+    paddingHorizontal: 18,
+    paddingBottom: 24,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    borderColor: COLORS.border,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    elevation: 3,
   },
   calendarHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 18,
   },
   calendarTitleRow: {
     flexDirection: "row",
     alignItems: "center",
+    flex: 1,
   },
   calendarMonthTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.text,
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: -0.7,
   },
   fullCalendarButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    backgroundColor: COLORS.greenLight,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
   },
   fullCalendarText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#4F46E5",
-    marginRight: 4,
+    marginRight: 5,
+    color: COLORS.green,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.4,
   },
   daysHeaderRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    paddingBottom: 8,
+    borderBottomColor: COLORS.border,
+    paddingBottom: 10,
     marginBottom: 8,
   },
   dayHeaderCell: {
-    width: 38,
+    width: "14.28%",
     textAlign: "center",
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#94A3B8",
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   calendarGrid: {
     flexDirection: "row",
@@ -464,19 +575,24 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: "14.28%",
-    height: 42,
+    height: 44,
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 2,
-    borderRadius: 10,
+    borderRadius: 22,
   },
   dayCellSelected: {
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.green,
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.24,
+    shadowRadius: 10,
+    elevation: 3,
   },
   dayNumber: {
+    color: COLORS.text,
     fontSize: 14,
     fontWeight: "500",
-    color: "#1E293B",
   },
   dayNumberSelected: {
     color: "#FFFFFF",
@@ -486,21 +602,22 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "#EF4444",
+    backgroundColor: COLORS.gold,
     marginTop: 3,
   },
   occupiedDotSelected: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.goldLight,
   },
 
+  /* Legend */
   legendContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 14,
-    paddingTop: 12,
+    marginTop: 16,
+    paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
-    gap: 16,
+    borderTopColor: COLORS.border,
+    gap: 20,
   },
   legendItem: {
     flexDirection: "row",
@@ -513,46 +630,55 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   legendText: {
-    fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: "600",
   },
+
+  /* Selected day details (.employee-profile-preview style) */
   dayDetailsBox: {
-    marginTop: 16,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 12,
+    marginTop: 18,
+    backgroundColor: COLORS.cream,
+    borderRadius: 18,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: COLORS.border,
   },
   detailsTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#475569",
-    marginBottom: 8,
+    marginBottom: 12,
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   appointmentsList: {
     flexDirection: "column",
-    gap: 8,
+    gap: 10,
   },
   appointmentBadge: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.green,
   },
   appointmentText: {
-    fontSize: 12,
+    marginLeft: 8,
+    flexShrink: 1,
+    color: COLORS.text,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#0F172A",
-    marginLeft: 6,
   },
   noAppointmentsText: {
+    color: COLORS.muted,
     fontSize: 12,
-    color: "#94A3B8",
-    fontStyle: "italic",
+    fontWeight: "550" as any,
   },
 });

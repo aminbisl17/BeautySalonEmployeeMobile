@@ -1,3 +1,4 @@
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
 import {
   addSkills,
   deleteSkill,
@@ -9,7 +10,6 @@ import {
 } from "@/javascript/sherbimet/sherbimetAPI";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { Image } from "expo-image";
-import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -22,8 +22,10 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Skills() {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -167,7 +169,7 @@ export default function Skills() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color={COLORS.green} />
         <Text style={styles.loadingText}>
           Po ngarkohet portofoli i shërbimeve...
         </Text>
@@ -195,37 +197,35 @@ export default function Skills() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#4F46E5"
-          colors={["#4F46E5"]}
+          tintColor={COLORS.green}
+          colors={[COLORS.green]}
         />
       }
     >
-      {/* TOP HEADER */}
-      <View style={styles.header}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.backButton,
-            pressed && styles.pressedState,
-          ]}
-          onPress={() => router.push("/Home")}
-        >
-          <Ionicons name="arrow-back" size={20} color="#4F46E5" />
-        </Pressable>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.title}>Menuja e Shërbimeve</Text>
-          <Text style={styles.subtitle}>
-            Menaxhoni specializimet & trajtimet tuaja
-          </Text>
+      {/* HEADER — styled to match the Profile screen */}
+      <View style={[styles.headerZone, { paddingTop: insets.top + 28 }]}>
+        <View style={styles.badgePill}>
+          <Text style={styles.badgePillText}>Portofoli Profesional</Text>
         </View>
+        <View style={styles.avatarRing}>
+          <View style={styles.avatar}>
+            <Ionicons name="cut-outline" size={34} color={COLORS.goldLight} />
+          </View>
+        </View>
+        <Text style={styles.title}>Menuja e Shërbimeve</Text>
+        <Text style={styles.subtitle}>
+          Menaxhoni specializimet & trajtimet tuaja
+        </Text>
         {submitting && (
           <ActivityIndicator
             size="small"
-            color="#4F46E5"
-            style={{ marginLeft: "auto" }}
+            color={COLORS.goldLight}
+            style={styles.headerLoader}
           />
         )}
       </View>
 
+      <View style={styles.body}>
       {/* BEAUTY ARTIST OVERVIEW SUMMARY */}
       <View style={styles.summaryBar}>
         <View style={styles.summaryItem}>
@@ -258,7 +258,7 @@ export default function Skills() {
         >
           <View style={styles.dropdownTitleContainer}>
             <View style={styles.dropdownIconWrapper}>
-              <Ionicons name="cut-outline" size={18} color="#4F46E5" />
+              <Ionicons name="cut-outline" size={18} color={COLORS.green} />
             </View>
             <View>
               <Text style={styles.dropdownTitle}>
@@ -272,7 +272,7 @@ export default function Skills() {
           <Ionicons
             name={showEmployeeSkills ? "chevron-up" : "chevron-down"}
             size={20}
-            color="#64748B"
+            color={COLORS.muted}
           />
         </Pressable>
 
@@ -281,7 +281,7 @@ export default function Skills() {
             {employeeSkills.length === 0 ? (
               <View style={styles.emptyCard}>
                 <View style={styles.emptyIconContainer}>
-                  <Ionicons name="sparkles-outline" size={32} color="#94A3B8" />
+                  <Ionicons name="sparkles-outline" size={32} color={COLORS.light} />
                 </View>
                 <Text style={styles.emptyTitle}>
                   Nuk keni shtuar asnjë shërbim
@@ -320,7 +320,7 @@ export default function Skills() {
         >
           <View style={styles.dropdownTitleContainer}>
             <View style={styles.dropdownIconWrapper}>
-              <Ionicons name="grid-outline" size={18} color="#4F46E5" />
+              <Ionicons name="grid-outline" size={18} color={COLORS.green} />
             </View>
             <View>
               <Text style={styles.dropdownTitle}>Katalogu i Sallonit</Text>
@@ -332,7 +332,7 @@ export default function Skills() {
           <Ionicons
             name={showAllServices ? "chevron-up" : "chevron-down"}
             size={20}
-            color="#64748B"
+            color={COLORS.muted}
           />
         </Pressable>
 
@@ -357,6 +357,7 @@ export default function Skills() {
               ))}
           </View>
         )}
+      </View>
       </View>
 
       {/* SERVICE ATTRIBUTES & VARIATIONS MODAL */}
@@ -383,13 +384,13 @@ export default function Skills() {
                 ]}
                 onPress={() => setModalVisible(false)}
               >
-                <Ionicons name="close" size={18} color="#64748B" />
+                <Ionicons name="close" size={18} color={COLORS.muted} />
               </Pressable>
             </View>
 
             {loadingAttributes ? (
               <View style={styles.modalLoading}>
-                <ActivityIndicator size="small" color="#4F46E5" />
+                <ActivityIndicator size="small" color={COLORS.green} />
                 <Text style={styles.modalLoadingText}>
                   Po ngarkohen variacionet e trajtimit...
                 </Text>
@@ -399,7 +400,7 @@ export default function Skills() {
                 <Ionicons
                   name="information-circle-outline"
                   size={36}
-                  color="#94A3B8"
+                  color={COLORS.light}
                 />
                 <Text style={styles.modalEmptyText}>
                   Ky shërbim ka vetëm çmimin bazë dhe nuk përmban
@@ -456,7 +457,7 @@ function BeautySkillCard({
             <Image source={{ uri: skill.imagePath }} style={styles.image} contentFit="cover" />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="sparkles-outline" size={22} color="#94A3B8" />
+              <Ionicons name="sparkles-outline" size={22} color={COLORS.light} />
             </View>
           )}
         </View>
@@ -477,11 +478,11 @@ function BeautySkillCard({
 
           <View style={styles.metaRow}>
             <View style={styles.priceTag}>
-              <Ionicons name="cash-outline" size={13} color="#4F46E5" />
+              <Ionicons name="cash-outline" size={13} color={COLORS.green} />
               <Text style={styles.priceTagText}>€{skill.qmimi_baze}</Text>
             </View>
             <View style={styles.timeTag}>
-              <Ionicons name="time-outline" size={13} color="#64748B" />
+              <Ionicons name="time-outline" size={13} color={COLORS.muted} />
               <Text style={styles.timeTagText}>{skill.kohezgjatja} min</Text>
             </View>
           </View>
@@ -498,7 +499,7 @@ function BeautySkillCard({
           onPress={onRemove}
           disabled={submitting}
         >
-          <Ionicons name="trash-outline" size={16} color="#EF4444" />
+          <Ionicons name="trash-outline" size={16} color={COLORS.red} />
         </Pressable>
       </View>
     </View>
@@ -544,7 +545,7 @@ function AvailableBeautyServiceCard({
             />
           ) : (
             <View style={styles.placeholderImage}>
-              <Ionicons name="briefcase-outline" size={22} color="#94A3B8" />
+              <Ionicons name="briefcase-outline" size={22} color={COLORS.light} />
             </View>
           )}
         </View>
@@ -559,11 +560,11 @@ function AvailableBeautyServiceCard({
 
           <View style={styles.metaRow}>
             <View style={styles.priceTag}>
-              <Ionicons name="cash-outline" size={13} color="#4F46E5" />
+              <Ionicons name="cash-outline" size={13} color={COLORS.green} />
               <Text style={styles.priceTagText}>€{service.qmimi_baze}</Text>
             </View>
             <View style={styles.timeTag}>
-              <Ionicons name="time-outline" size={13} color="#64748B" />
+              <Ionicons name="time-outline" size={13} color={COLORS.muted} />
               <Text style={styles.timeTagText}>{service.kohezgjatja} min</Text>
             </View>
           </View>
@@ -583,7 +584,7 @@ function AvailableBeautyServiceCard({
         <Ionicons
           name={isAdded ? "checkmark" : "add"}
           size={15}
-          color={isAdded ? "#10B981" : "#FFFFFF"}
+          color={isAdded ? COLORS.green : COLORS.surface}
         />
         <Text style={[styles.addBtnText, isAdded && styles.addedBtnText]}>
           {isAdded ? "Aktiv" : "Shto"}
@@ -612,11 +613,11 @@ function AttributeItem({ attr }: { attr: any }) {
 
       <View style={styles.attrFooter}>
         <View style={styles.detailRow}>
-          <Ionicons name="time-outline" size={13} color="#64748B" />
+          <Ionicons name="time-outline" size={13} color={COLORS.muted} />
           <Text style={styles.attrDetailText}>{attr.kohezgjatja} min</Text>
         </View>
         <View style={styles.detailRow}>
-          <Ionicons name="cash-outline" size={13} color="#4F46E5" />
+          <Ionicons name="cash-outline" size={13} color={COLORS.green} />
           <Text style={styles.attrPrice}>€{attr.qmimi}</Text>
         </View>
       </View>
@@ -627,77 +628,108 @@ function AttributeItem({ attr }: { attr: any }) {
 const styles = StyleSheet.create({
   rootWrapper: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
-    justify: "flex-start",
+    backgroundColor: COLORS.background,
   },
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
   contentContainer: {
-    padding: 16,
     paddingBottom: 40,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
   loadingText: {
     marginTop: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     fontSize: 15,
     fontWeight: "500",
   },
   pressedState: {
     opacity: 0.75,
   },
-  header: {
-    flexDirection: "row",
+  /* Full-width dark header matching the Profile screen */
+  headerZone: {
     alignItems: "center",
-    marginBottom: 12,
-    marginTop: 0,
+    backgroundColor: COLORS.black,
+    paddingHorizontal: 22,
+    paddingBottom: 66,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(182, 150, 99, 0.22)",
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#EEF2FF",
+  badgePill: {
+    marginBottom: 18,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: RADIUS.pill,
+  },
+  badgePillText: {
+    color: COLORS.goldSoft,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.3,
+    textTransform: "uppercase",
+  },
+  avatarRing: {
+    padding: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: 43,
+  },
+  avatar: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: COLORS.green,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
-  },
-  headerTitleContainer: {
-    justifyContent: "center",
-    alignItems: "flex-start",
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0F172A",
-    letterSpacing: -0.3,
-    textAlign: "left",
+    fontFamily: SERIF,
+    fontSize: 29,
+    fontWeight: "500",
+    color: COLORS.cream,
+    letterSpacing: -0.8,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
-    textAlign: "left",
+    marginTop: 7,
+    color: COLORS.goldSoft,
+    fontFamily: SERIF,
+    fontStyle: "italic",
+    fontSize: 15,
+    letterSpacing: -0.2,
+    textAlign: "center",
+    lineHeight: 21,
   },
-
+  headerLoader: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+  },
+  body: {
+    marginHorizontal: 12,
+    marginTop: -32,
+  },
   summaryBar: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
+    paddingVertical: 17,
     paddingHorizontal: 12,
-    marginBottom: 14,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     alignItems: "center",
     justifyContent: "space-around",
-    shadowColor: "#0F172A",
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
     shadowRadius: 6,
@@ -709,29 +741,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryValue: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#4F46E5",
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.green,
+    letterSpacing: -0.4,
   },
   summaryLabel: {
     fontSize: 11,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 2,
     fontWeight: "500",
   },
   summaryDivider: {
     width: 1,
     height: 24,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.border,
   },
 
   emptyCard: {
     padding: 24,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     marginBottom: 10,
     width: "100%",
   },
@@ -739,7 +772,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 12,
@@ -747,11 +780,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#0F172A",
+    color: COLORS.text,
     marginBottom: 4,
   },
   emptyText: {
-    color: "#64748B",
+    color: COLORS.muted,
     fontSize: 13,
     textAlign: "center",
     lineHeight: 18,
@@ -768,12 +801,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: RADIUS.card,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
+    borderColor: COLORS.border,
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.03,
     shadowRadius: 6,
@@ -786,12 +819,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
   dropdownContentAttached: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
     borderBottomLeftRadius: 14,
     borderBottomRightRadius: 14,
     borderWidth: 1,
     borderTopWidth: 0,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     paddingHorizontal: 12,
     paddingTop: 12,
     paddingBottom: 2,
@@ -806,20 +839,20 @@ const styles = StyleSheet.create({
   dropdownIconWrapper: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: "#EEF2FF",
+    borderRadius: RADIUS.control,
+    backgroundColor: COLORS.greenLight,
     justifyContent: "center",
     alignItems: "center",
   },
   dropdownTitle: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.text,
     textAlign: "left",
   },
   dropdownSub: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 1,
     textAlign: "left",
   },
@@ -827,14 +860,14 @@ const styles = StyleSheet.create({
   /* UNIFIED LIST CARDS */
   skillCard: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     alignItems: "center",
-    shadowColor: "#0F172A",
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 4,
@@ -843,14 +876,14 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.card,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     alignItems: "center",
-    shadowColor: "#0F172A",
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.02,
     shadowRadius: 4,
@@ -869,7 +902,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
   },
   activeBadge: {
-    backgroundColor: "#ECFDF5",
+    backgroundColor: COLORS.greenLight,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -877,7 +910,7 @@ const styles = StyleSheet.create({
   activeBadgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#10B981",
+    color: COLORS.green,
   },
   metaRow: {
     flexDirection: "row",
@@ -888,7 +921,7 @@ const styles = StyleSheet.create({
   priceTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.greenLight,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -897,12 +930,12 @@ const styles = StyleSheet.create({
   priceTagText: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#4F46E5",
+    color: COLORS.green,
   },
   timeTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -911,7 +944,7 @@ const styles = StyleSheet.create({
   timeTagText: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#64748B",
+    color: COLORS.muted,
   },
   actionColumn: {
     flexDirection: "row",
@@ -921,27 +954,27 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: RADIUS.control,
     justifyContent: "center",
     alignItems: "center",
   },
   deleteBtn: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: COLORS.dangerBg,
   },
 
   imageContainer: {
     width: 54,
     height: 54,
-    borderRadius: 10,
+    borderRadius: RADIUS.control,
     overflow: "hidden",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
   },
   placeholderImage: {
     width: "100%",
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
   image: {
     width: "100%",
@@ -955,13 +988,13 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.text,
     marginBottom: 2,
     textAlign: "left",
   },
   description: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     lineHeight: 16,
     textAlign: "left",
   },
@@ -973,24 +1006,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.green,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     marginLeft: 8,
   },
   addedBtn: {
-    backgroundColor: "#ECFDF5",
+    backgroundColor: COLORS.greenLight,
     borderWidth: 1,
-    borderColor: "#A7F3D0",
+    borderColor: COLORS.infoBorder,
   },
   addBtnText: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontSize: 13,
     fontWeight: "600",
   },
   addedBtnText: {
-    color: "#10B981",
+    color: COLORS.green,
   },
   disabledAddBtn: {
     opacity: 0.85,
@@ -1005,13 +1038,13 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: "100%",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
     paddingTop: 10,
     maxHeight: "82%",
-    shadowColor: "#000",
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -1020,7 +1053,7 @@ const styles = StyleSheet.create({
   modalPill: {
     width: 38,
     height: 4,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.border,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 14,
@@ -1031,18 +1064,19 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: COLORS.creamDark,
     marginBottom: 14,
   },
   modalTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontFamily: SERIF,
+    fontSize: 21,
+    fontWeight: "500",
+    color: COLORS.text,
     textAlign: "left",
   },
   modalSubtitle: {
     fontSize: 13,
-    color: "#4F46E5",
+    color: COLORS.green,
     fontWeight: "600",
     marginTop: 2,
     textAlign: "left",
@@ -1051,7 +1085,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1062,7 +1096,7 @@ const styles = StyleSheet.create({
   modalLoadingText: {
     marginTop: 10,
     fontSize: 13,
-    color: "#64748B",
+    color: COLORS.muted,
   },
   modalEmpty: {
     padding: 32,
@@ -1071,16 +1105,16 @@ const styles = StyleSheet.create({
   modalEmptyText: {
     marginTop: 10,
     fontSize: 13,
-    color: "#94A3B8",
+    color: COLORS.light,
     textAlign: "center",
   },
   attrCard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.border,
     width: "100%",
   },
   attrHeader: {
@@ -1092,12 +1126,12 @@ const styles = StyleSheet.create({
   attrOption: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.text,
     textAlign: "left",
   },
   attrDesc: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 2,
     marginBottom: 8,
     textAlign: "left",
@@ -1110,17 +1144,17 @@ const styles = StyleSheet.create({
   },
   attrDetailText: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginLeft: 4,
   },
   attrPrice: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#4F46E5",
+    color: COLORS.green,
     marginLeft: 4,
   },
   discountBadge: {
-    backgroundColor: "#DCFCE7",
+    backgroundColor: COLORS.greenLight,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -1128,6 +1162,6 @@ const styles = StyleSheet.create({
   discountText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#16A34A",
+    color: COLORS.green,
   },
 });

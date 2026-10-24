@@ -11,7 +11,7 @@ export default {
     // Keep your existing Expo account and app identity.
     owner: "aminbisl20",
     name: "beautysalonemployeemobile",
-    slug: "beautysalonemployeemobile",
+    slug: "my-app",
 
     // Preserve static plugins and add the native date-time picker.
     plugins: [

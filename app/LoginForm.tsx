@@ -1,4 +1,8 @@
 import Constants from "expo-constants";
+
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { forwardRef, useEffect, useRef, useState } from "react";
@@ -100,7 +104,7 @@ function toErrorMessage(err: unknown): string {
 function LoadingScreen({ message }: { message: string }) {
   return (
     <View style={styles.centered}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
+  <ActivityIndicator size="large" color={COLORS.primary} />
       <Text style={styles.loadingText}>{message}</Text>
     </View>
   );
@@ -228,6 +232,8 @@ type BannerState = { message: string; tone: "error" | "info" } | null;
 type FieldErrors = { username?: string; password?: string };
 
 export default function LoginView() {
+  const insets = useSafeAreaInsets();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -392,10 +398,18 @@ export default function LoginView() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerZone}>
-          <Text style={styles.brandTitle}>BeautySalon</Text>
-          <Text style={styles.brandSubtitle}>Portali i Stafit</Text>
-        </View>
+        
+        
+        <View style={[styles.headerZone, { paddingTop: insets.top + 56 }]}>
+  <View style={styles.badgePill}>
+    <Text style={styles.badgePillText}>Portali i Stafit</Text>
+  </View>
+  <Text style={styles.brandTitle}>Beauty</Text>
+  <Text style={styles.brandTitleSerif}>Salon</Text>
+  <Text style={styles.brandSubtitle}>
+    Kyçuni për të parë terminet dhe orarin tuaj.
+  </Text>
+</View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Kyçuni në llogari</Text>
@@ -463,109 +477,123 @@ export default function LoginView() {
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Styles                                                                     */
-/* -------------------------------------------------------------------------- */
-
-const COLORS = {
-  background: "#F8FAFC",
-  surface: "#FFFFFF",
-  border: "#E2E8F0",
-  text: "#0F172A",
-  muted: "#64748B",
-  placeholder: "#94A3B8",
-  primary: "#4F46E5",
-  danger: "#DC2626",
-  dangerBg: "#FEF2F2",
-  dangerBorder: "#FECACA",
-  infoBg: "#EEF2FF",
-  infoBorder: "#C7D2FE",
-};
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.cream,
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingBottom: 32,
   },
   centered: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.cream,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 15,
+    marginTop: 14,
+    fontSize: 12,
     color: COLORS.muted,
-    fontWeight: "500",
   },
   configTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 22,
+    fontWeight: "500",
+    letterSpacing: -0.8,
     color: COLORS.text,
     textAlign: "center",
     marginBottom: 8,
   },
   configText: {
-    fontSize: 15,
+    fontSize: 13,
     color: COLORS.muted,
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: 21,
   },
+
+  /* Header (.termini-header) */
   headerZone: {
     alignItems: "center",
-    marginBottom: 28,
+    backgroundColor: COLORS.black,
+    paddingHorizontal: 22,
+    paddingBottom: 74,
+  },
+  badgePill: {
+    marginBottom: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: RADIUS.pill,
+  },
+  badgePillText: {
+    color: COLORS.goldSoft,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.6,
+    textTransform: "uppercase",
   },
   brandTitle: {
-    fontSize: 30,
-    fontWeight: "700",
-    color: COLORS.text,
-    letterSpacing: 3,
+    color: "#F7F5EF",
+    fontSize: 42,
+    fontWeight: "500",
+    letterSpacing: -2.5,
+    lineHeight: 42,
+    textAlign: "center",
+  },
+  brandTitleSerif: {
+    fontFamily: SERIF,
+    fontStyle: "italic",
+    fontWeight: "400",
+    color: COLORS.goldSoft,
+    fontSize: 42,
+    letterSpacing: -1.7,
+    lineHeight: 46,
     textAlign: "center",
   },
   brandSubtitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.primary,
-    textTransform: "uppercase",
-    letterSpacing: 1.5,
-    marginTop: 6,
+    maxWidth: 420,
+    marginTop: 22,
+    color: "rgba(255, 255, 255, 0.66)",
+    fontSize: 14,
+    lineHeight: 24,
     textAlign: "center",
   },
+
+  /* Card (.form-section-card) */
   card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 24,
+    marginHorizontal: 12,
+    marginTop: -34,
+    paddingTop: 22,
+    paddingHorizontal: 18,
+    paddingBottom: 24,
     borderWidth: 1,
     borderColor: COLORS.border,
-    shadowColor: COLORS.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: RADIUS.card,
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    elevation: 3,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    marginBottom: 22,
     color: COLORS.text,
-    marginBottom: 20,
-    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "600",
+    letterSpacing: -0.7,
   },
 
   /* Banner */
   banner: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    marginBottom: 16,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 18,
   },
   bannerError: {
     backgroundColor: COLORS.dangerBg,
@@ -576,76 +604,95 @@ const styles = StyleSheet.create({
     borderColor: COLORS.infoBorder,
   },
   bannerText: {
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 20,
+    fontWeight: "600",
   },
-  bannerTextError: { color: COLORS.danger },
-  bannerTextInfo: { color: COLORS.primary },
+  bannerTextError: { color: COLORS.red },
+  bannerTextInfo: { color: COLORS.green },
 
-  /* Field */
+  /* Field (.input-box) */
   fieldWrap: {
     marginBottom: 16,
   },
   fieldLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginBottom: 6,
+    marginBottom: 7,
+    color: COLORS.muted,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
-    height: 50,
+    minHeight: 52,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 16,
+    borderRadius: RADIUS.control,
+    backgroundColor: "#FFFFFF",
   },
   inputRowFocused: {
-    borderColor: COLORS.primary,
+    borderColor: "rgba(36, 72, 58, 0.45)",
+    // focus ring (box-shadow 0 0 0 4px) – iOS only; Android ignores shadows on non-elevated views
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
   },
   inputRowError: {
-    borderColor: COLORS.danger,
+    borderColor: "rgba(185, 78, 72, 0.55)",
+    backgroundColor: "rgba(185, 78, 72, 0.04)",
   },
   input: {
     flex: 1,
     height: "100%",
-    fontSize: 15,
     color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "500",
   },
   rightAction: {
     marginLeft: 12,
   },
   rightActionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.primary,
+    color: COLORS.green,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
   },
   fieldError: {
-    marginTop: 6,
-    fontSize: 13,
-    color: COLORS.danger,
+    marginTop: 4,
+    color: COLORS.red,
+    fontSize: 11,
+    fontWeight: "600",
   },
 
-  /* Button */
+  /* Button (.confirm-btn-primary) */
   button: {
-    backgroundColor: COLORS.primary,
-    height: 50,
-    borderRadius: 10,
+    minHeight: 54,
+    marginTop: 8,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 8,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.green,
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    elevation: 4,
   },
   buttonPressed: {
-    opacity: 0.85,
+    transform: [{ scale: 0.97 }],
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
     color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 16,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.6,
   },
 });

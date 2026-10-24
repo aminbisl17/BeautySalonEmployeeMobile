@@ -8,25 +8,32 @@ const TENANT_TOKEN_KEY = "tenantToken"; // must match the key used in VerifyTena
 export default function HomeScreen() {
   const [target, setTarget] = useState<"/LoginForm" | "/VerifyTenant" | null>(null);
 
-useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-  (async () => {
-    try {
+    (async () => {
+      try {
+        // Optional: If you are intentionally clearing it on mount for testing, use the variable:
+        await SecureStore.deleteItemAsync(TENANT_TOKEN_KEY);
+        
+        const token = await SecureStore.getItemAsync(TENANT_TOKEN_KEY);
+        console.log("APP: tenant token found?", !!token);
+        
+        if (mounted) {
+          // Since you are deleting the token right above this line, 
+          // token will always be null/false here, so it will now correctly go to "/VerifyTenant"
+          setTarget(token ? "/LoginForm" : "/VerifyTenant");
+        }
+      } catch (e) {
+        console.error("APP: SecureStore read failed", e);
+        if (mounted) setTarget("/VerifyTenant");
+      }
+    })();
 
-      const token = await SecureStore.getItemAsync(TENANT_TOKEN_KEY);
-      console.log("APP: tenant token found?", !!token);
-      if (mounted) setTarget(token ? "/LoginForm" : "/VerifyTenant");
-    } catch (e) {
-      console.error("APP: SecureStore read failed", e);
-      if (mounted) setTarget("/VerifyTenant");
-    }
-  })();
-
-  return () => {
-    mounted = false;
-  };
-}, []);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // White screen while checking
   if (!target) {

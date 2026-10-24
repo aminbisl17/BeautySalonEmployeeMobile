@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 
+import { COLORS, RADIUS, SERIF } from "@/constants/theme";
 import {
   deleteDate,
   getAvailability,
@@ -23,6 +24,7 @@ import {
 import { getSkills } from "@/javascript/employees/skillsAPI";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- Types & Interfaces ---
 
@@ -151,6 +153,7 @@ const isDateOccupied = (
 
 // --- Main Component ---
 export default function Availability() {
+  const insets = useSafeAreaInsets();
   const [availability, setAvailability] = useState<AvailabilityItem[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
@@ -481,22 +484,39 @@ export default function Availability() {
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#4F46E5"
-          colors={["#4F46E5"]}
+          tintColor={COLORS.green}
+          colors={[COLORS.green]}
         />
       }
     >
-      <View style={styles.header}>
+      {/* Profile-matched editorial header */}
+      <View style={[styles.headerZone, { paddingTop: insets.top + 24 }]}>
         <Pressable
           style={styles.backButton}
           onPress={() => router.push("/Home")}
+          accessibilityRole="button"
+          accessibilityLabel="Kthehu në faqen kryesore"
         >
-          <Ionicons name="arrow-back" size={22} color="#4F46E5" />
+          <Ionicons name="arrow-back" size={21} color={COLORS.goldLight} />
         </Pressable>
 
+        <View style={styles.badgePill}>
+          <Text style={styles.badgePillText}>Orari Profesional</Text>
+        </View>
+
+        <View style={styles.heroIconRing}>
+          <View style={styles.heroIcon}>
+            <Ionicons name="calendar-outline" size={32} color={COLORS.goldLight} />
+          </View>
+        </View>
+
         <Text style={styles.title}>Disponueshmëria</Text>
+        <Text style={styles.headerSubtitle}>
+          Menaxhoni oraret dhe shërbimet tuaja
+        </Text>
       </View>
 
+      <View style={styles.body}>
       {/* CURRENT AVAILABILITY */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Disponueshmëria Aktuale</Text>
@@ -529,7 +549,7 @@ export default function Availability() {
                       <Ionicons
                         name="calendar-outline"
                         size={18}
-                        color="#4F46E5"
+                        color={COLORS.green}
                         style={{ marginRight: 8 }}
                       />
                       <Text style={styles.currentDateRange}>
@@ -541,7 +561,7 @@ export default function Availability() {
                     <Ionicons
                       name={isSavedCardExpanded ? "chevron-up" : "chevron-down"}
                       size={20}
-                      color="#94A3B8"
+                      color={COLORS.light}
                     />
                   </Pressable>
 
@@ -871,8 +891,8 @@ export default function Availability() {
                                     size={15}
                                     color={
                                       activeTab === "days"
-                                        ? "#4F46E5"
-                                        : "#64748B"
+                                        ? COLORS.green
+                                        : COLORS.muted
                                     }
                                     style={{ marginRight: 6 }}
                                   />
@@ -900,8 +920,8 @@ export default function Availability() {
                                     size={15}
                                     color={
                                       activeTab === "skills"
-                                        ? "#4F46E5"
-                                        : "#64748B"
+                                        ? COLORS.green
+                                        : COLORS.muted
                                     }
                                     style={{ marginRight: 6 }}
                                   />
@@ -1218,8 +1238,8 @@ export default function Availability() {
                                     size={15}
                                     color={
                                       activeTab === "days"
-                                        ? "#4F46E5"
-                                        : "#64748B"
+                                        ? COLORS.green
+                                        : COLORS.muted
                                     }
                                     style={{ marginRight: 6 }}
                                   />
@@ -1247,8 +1267,8 @@ export default function Availability() {
                                     size={15}
                                     color={
                                       activeTab === "skills"
-                                        ? "#4F46E5"
-                                        : "#64748B"
+                                        ? COLORS.green
+                                        : COLORS.muted
                                     }
                                     style={{ marginRight: 6 }}
                                   />
@@ -1331,7 +1351,7 @@ export default function Availability() {
                                               <Ionicons
                                                 name="construct-outline"
                                                 size={20}
-                                                color="#4F46E5"
+                                                color={COLORS.green}
                                               />
                                             </View>
                                           )}
@@ -1349,7 +1369,7 @@ export default function Availability() {
                                                 <Ionicons
                                                   name="time-outline"
                                                   size={12}
-                                                  color="#64748B"
+                                                  color={COLORS.muted}
                                                 />
                                                 <Text style={styles.metaText}>
                                                   {sherbi.kohezgjatja} min
@@ -1365,7 +1385,7 @@ export default function Availability() {
                                                 <Ionicons
                                                   name="pricetag-outline"
                                                   size={12}
-                                                  color="#059669"
+                                                  color={COLORS.green}
                                                 />
                                                 <Text style={styles.priceText}>
                                                   {sherbi.qmimi_baze} €
@@ -1393,7 +1413,7 @@ export default function Availability() {
                                   <Ionicons
                                     name="create-outline"
                                     size={16}
-                                    color="#4F46E5"
+                                    color={COLORS.green}
                                     style={{ marginRight: 4 }}
                                   />
                                   <Text style={styles.editButtonText}>
@@ -1410,7 +1430,7 @@ export default function Availability() {
                                   <Ionicons
                                     name="trash-outline"
                                     size={16}
-                                    color="#EF4444"
+                                    color={COLORS.red}
                                     style={{ marginRight: 4 }}
                                   />
                                   <Text style={styles.deleteButtonText}>
@@ -1451,7 +1471,7 @@ export default function Availability() {
           <Ionicons
             name={showSetupForm ? "chevron-up" : "chevron-down"}
             size={22}
-            color="#4F46E5"
+            color={COLORS.green}
           />
         </Pressable>
         {showSetupForm && (
@@ -1517,7 +1537,7 @@ export default function Availability() {
               <Ionicons
                 name={showSkillsForm ? "chevron-up" : "chevron-down"}
                 size={22}
-                color="#4F46E5"
+                color={COLORS.green}
               />
             </Pressable>
             {showSkillsForm && (
@@ -1540,7 +1560,7 @@ export default function Availability() {
                         <Ionicons
                           name={isSelected ? "checkbox" : "square-outline"}
                           size={22}
-                          color={isSelected ? "#4F46E5" : "#94A3B8"}
+                          color={isSelected ? COLORS.green : COLORS.light}
                           style={{ alignSelf: "center", marginRight: 4 }}
                         />
 
@@ -1562,7 +1582,7 @@ export default function Availability() {
                             <Ionicons
                               name="image-outline"
                               size={24}
-                              color="#94A3B8"
+                              color={COLORS.light}
                             />
                           </View>
                         )}
@@ -1628,8 +1648,8 @@ export default function Availability() {
 
                         <View style={styles.headerRight}>
                           <Switch
-                            trackColor={{ false: "#E2E8F0", true: "#818CF8" }}
-                            thumbColor={day.enabled ? "#4F46E5" : "#94A3B8"}
+                            trackColor={{ false: COLORS.creamDark, true: COLORS.gold }}
+                            thumbColor={day.enabled ? COLORS.green : COLORS.light}
                             value={day.enabled}
                             onValueChange={(v) =>
                               updateDay(day.id, "enabled", v)
@@ -1638,7 +1658,7 @@ export default function Availability() {
                           <Ionicons
                             name={isExpanded ? "chevron-up" : "chevron-down"}
                             size={18}
-                            color="#94A3B8"
+                            color={COLORS.light}
                           />
                         </View>
                       </Pressable>
@@ -1825,6 +1845,7 @@ export default function Availability() {
           </View>
         </Modal>
       </View>
+      </View>
     </ScrollView>
   );
 }
@@ -1832,28 +1853,82 @@ export default function Availability() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 48,
   },
-  header: {
-    flexDirection: "row",
+  headerZone: {
+    position: "relative",
     alignItems: "center",
-    marginBottom: 20,
-    marginTop: 10,
+    backgroundColor: COLORS.black,
+    paddingHorizontal: 22,
+    paddingBottom: 72,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
-    borderRadius: 8,
-    backgroundColor: "#EEF2FF",
+    position: "absolute",
+    left: 18,
+    top: 14,
+    zIndex: 2,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: RADIUS.pill,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(182,150,99,0.32)",
+  },
+  badgePill: {
+    marginBottom: 18,
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: RADIUS.pill,
+  },
+  badgePillText: {
+    color: COLORS.goldSoft,
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 2.4,
+    textTransform: "uppercase",
+  },
+  heroIconRing: {
+    padding: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: 42,
+  },
+  heroIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.green,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#0F172A",
+    fontSize: 30,
+    fontWeight: "500",
+    letterSpacing: -1,
+    color: COLORS.cream,
+    fontFamily: SERIF,
+    textAlign: "center",
+  },
+  headerSubtitle: {
+    marginTop: 7,
+    color: COLORS.goldSoft,
+    fontFamily: SERIF,
+    fontStyle: "italic",
+    fontSize: 15,
+    textAlign: "center",
+    letterSpacing: -0.2,
+  },
+  body: {
+    marginHorizontal: 12,
+    marginTop: -34,
   },
   section: {
     marginBottom: 20,
@@ -1861,7 +1936,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#475569",
+    color: COLORS.muted,
     marginBottom: 12,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -1869,26 +1944,26 @@ const styles = StyleSheet.create({
   innerSectionTitle: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1E293B",
+    color: COLORS.text,
     marginBottom: 8,
   },
   loading: {
-    color: "#64748B",
+    color: COLORS.muted,
     fontStyle: "italic",
   },
   cardGroupOuter: {
     marginBottom: 10,
   },
   currentCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   cardActiveShadow: {
-    borderColor: "#C7D2FE",
-    shadowColor: "#4F46E5",
+    borderColor: COLORS.goldSoft,
+    shadowColor: COLORS.green,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -1906,7 +1981,7 @@ const styles = StyleSheet.create({
   currentDateRange: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1E293B",
+    color: COLORS.text,
   },
   skillsSelectButton: {
     marginTop: 16,
@@ -1915,17 +1990,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.creamDark,
   },
   /* --- NEW TAB BAR STYLES --- */
   tabContainer: {
     flexDirection: "row",
     marginBottom: 16,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.greenLight,
     borderRadius: 10,
     padding: 4,
     borderWidth: 1,
-    borderColor: "#E0E7FF",
+    borderColor: COLORS.greenLight,
   },
   tabButton: {
     flex: 1,
@@ -1934,8 +2009,8 @@ const styles = StyleSheet.create({
     borderRadius: 7,
   },
   activeTabButton: {
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#4F46E5",
+    backgroundColor: COLORS.surface,
+    shadowColor: COLORS.green,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -1944,10 +2019,10 @@ const styles = StyleSheet.create({
   tabButtonText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#64748B",
+    color: COLORS.muted,
   },
   activeTabText: {
-    color: "#4F46E5",
+    color: COLORS.green,
     fontWeight: "700",
   },
   tabContent: {
@@ -1955,7 +2030,7 @@ const styles = StyleSheet.create({
   },
   /* --------------------------- */
   editDayCard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
     borderRadius: 8,
     padding: 10,
     marginBottom: 8,
@@ -1967,7 +2042,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginBottom: 4,
   },
   buttonRow: {
@@ -1980,10 +2055,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 6,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
   },
   cancelButtonText: {
-    color: "#475569",
+    color: COLORS.muted,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -1991,10 +2066,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 6,
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.green,
   },
   saveButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -2004,29 +2079,29 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#F8FAFC",
+    borderTopColor: COLORS.cream,
   },
   detailBadge: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.green,
     marginTop: 6,
     marginRight: 8,
   },
   dayNameActive: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0F172A",
+    color: COLORS.black,
   },
   detailTimeText: {
     fontSize: 13,
-    color: "#334155",
+    color: COLORS.text,
     marginTop: 2,
   },
   breakText: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 1,
   },
   actionButtons: {
@@ -2035,7 +2110,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.creamDark,
     gap: 12,
   },
   editButton: {
@@ -2043,7 +2118,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   editButtonText: {
-    color: "#4F46E5",
+    color: COLORS.green,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -2052,7 +2127,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   deleteButtonText: {
-    color: "#EF4444",
+    color: COLORS.red,
     fontWeight: "600",
     fontSize: 13,
   },
@@ -2060,38 +2135,38 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: RADIUS.control,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   setupToggleFormButtonActive: {
-    borderColor: "#818CF8",
-    backgroundColor: "#EEF2FF",
+    borderColor: COLORS.gold,
+    backgroundColor: COLORS.greenLight,
   },
   setupToggleTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#0F172A",
+    color: COLORS.black,
   },
   setupToggleSubtitle: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 2,
   },
   formContainer: {
     marginTop: 16,
   },
   cardGroup: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
     overflow: "hidden",
   },
   cardActiveBorder: {
-    borderColor: "#818CF8",
+    borderColor: COLORS.gold,
   },
   cellRow: {
     flexDirection: "row",
@@ -2101,12 +2176,12 @@ const styles = StyleSheet.create({
   },
   cellLabel: {
     fontSize: 14,
-    color: "#334155",
+    color: COLORS.text,
     fontWeight: "500",
   },
   separator: {
     height: 1,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
   },
   headerLeft: {
     flex: 1,
@@ -2119,23 +2194,23 @@ const styles = StyleSheet.create({
   dayName: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#64748B",
+    color: COLORS.muted,
   },
   statusSubtitle: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: COLORS.light,
     marginTop: 2,
   },
   dayContent: {
     padding: 12,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.creamDark,
   },
   groupLabel: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#475569",
+    color: COLORS.muted,
     textTransform: "uppercase",
     marginBottom: 6,
   },
@@ -2148,25 +2223,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     padding: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   timeLabel: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
   },
   submitButton: {
-    backgroundColor: "#4F46E5",
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: COLORS.green,
+    paddingVertical: 15,
+    borderRadius: RADIUS.pill,
     alignItems: "center",
     marginTop: 20,
   },
   submitButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontWeight: "600",
     fontSize: 15,
   },
@@ -2177,16 +2252,16 @@ const styles = StyleSheet.create({
   serviceCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   serviceCardSelected: {
-    borderColor: "#4F46E5",
+    borderColor: COLORS.green,
     borderWidth: 2,
-    backgroundColor: "#F5F3FF",
+    backgroundColor: COLORS.greenLight,
   },
   serviceMainRow: {
     flexDirection: "row",
@@ -2196,13 +2271,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.creamDark,
   },
   imagePlaceholder: {
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   serviceContent: {
     flex: 1,
@@ -2211,7 +2286,7 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#0F172A",
+    color: COLORS.black,
     textTransform: "capitalize",
   },
   metaRow: {
@@ -2222,12 +2297,12 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     fontWeight: "500",
   },
   serviceDescription: {
     fontSize: 12,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 4,
   },
   priceRow: {
@@ -2239,21 +2314,21 @@ const styles = StyleSheet.create({
   priceText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#4F46E5",
+    color: COLORS.green,
   },
   originalPriceText: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: COLORS.light,
     textDecorationLine: "line-through",
   },
   discountBadge: {
-    backgroundColor: "#FEF2F2",
+    backgroundColor: COLORS.dangerBg,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   discountBadgeText: {
-    color: "#EF4444",
+    color: COLORS.red,
     fontSize: 10,
     fontWeight: "700",
   },
@@ -2261,23 +2336,23 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.creamDark,
   },
   attributesSectionTitle: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#64748B",
+    color: COLORS.muted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
   },
   attributeCard: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
     borderRadius: 8,
     padding: 10,
     marginBottom: 6,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: COLORS.creamDark,
   },
   attributeMainInfo: {
     flexDirection: "row",
@@ -2292,11 +2367,11 @@ const styles = StyleSheet.create({
   attributeName: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#1E293B",
+    color: COLORS.text,
   },
   attributeDuration: {
     fontSize: 11,
-    color: "#64748B",
+    color: COLORS.muted,
   },
   attributePriceContainer: {
     alignItems: "flex-end",
@@ -2304,23 +2379,23 @@ const styles = StyleSheet.create({
   attributePrice: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.black,
   },
   attributeOriginalPrice: {
     fontSize: 10,
-    color: "#94A3B8",
+    color: COLORS.light,
     textDecorationLine: "line-through",
   },
   attributeDescription: {
     fontSize: 11,
-    color: "#64748B",
+    color: COLORS.muted,
     marginTop: 4,
   },
   skillsContainer: {
     marginTop: 16,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: COLORS.creamDark,
   },
   skillsHeader: {
     flexDirection: "row",
@@ -2331,19 +2406,19 @@ const styles = StyleSheet.create({
   skillsTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#1E293B",
+    color: COLORS.text,
   },
   countBadge: {
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.greenLight,
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 12,
+    borderRadius: RADIUS.control,
     marginLeft: "auto",
   },
   countBadgeText: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#4F46E5",
+    color: COLORS.green,
   },
   servicesList: {
     gap: 10,
@@ -2352,7 +2427,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.greenLight,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -2364,67 +2439,67 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#0F172A",
+    color: COLORS.black,
     marginBottom: 4,
   },
   metaBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: COLORS.border,
   },
   priceBadge: {
-    borderColor: "#A7F3D0",
-    backgroundColor: "#ECFDF5",
+    borderColor: COLORS.infoBorder,
+    backgroundColor: COLORS.greenLight,
   },
   skillsSection: {
     marginTop: 4,
   },
   addSkillButton: {
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.greenLight,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#C7D2FE",
+    borderColor: COLORS.goldSoft,
   },
   addSkillButtonText: {
-    color: "#4F46E5",
+    color: COLORS.green,
     fontSize: 12,
     fontWeight: "600",
   },
   noSkillsText: {
     fontSize: 13,
-    color: "#94A3B8",
+    color: COLORS.light,
     fontStyle: "italic",
     paddingVertical: 8,
   },
   skillRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.cream,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   /* --- ADDED SKILL ITEM STYLES --- */
   skillImagePlaceholder: {
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: "#EEF2FF",
+    backgroundColor: COLORS.greenLight,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   skillInfo: {
     flex: 1,
@@ -2435,12 +2510,12 @@ const styles = StyleSheet.create({
   skillName: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#1E293B",
+    color: COLORS.text,
   },
   skillPrice: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#4F46E5",
+    color: COLORS.green,
     marginTop: 2,
   },
   /* ------------------------------- */
@@ -2448,12 +2523,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: "#FEF2F2",
+    backgroundColor: COLORS.dangerBg,
     borderWidth: 1,
-    borderColor: "#FECACA",
+    borderColor: COLORS.dangerBorder,
   },
   removeSkillText: {
-    color: "#EF4444",
+    color: COLORS.red,
     fontSize: 11,
     fontWeight: "600",
   },
@@ -2461,18 +2536,18 @@ const styles = StyleSheet.create({
   /* --- MODAL STYLES --- */
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    backgroundColor: "rgba(17, 19, 17, 0.58)",
     justifyContent: "flex-end",
   },
   skillModal: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 24,
     maxHeight: "80%",
-    shadowColor: "#0F172A",
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -2481,7 +2556,7 @@ const styles = StyleSheet.create({
   modalHandle: {
     width: 36,
     height: 4,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.creamDark,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 16,
@@ -2489,7 +2564,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#0F172A",
+    color: COLORS.black,
     marginBottom: 16,
   },
   scrollContent: {
@@ -2498,37 +2573,37 @@ const styles = StyleSheet.create({
   skillOption: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1.5,
-    borderColor: "#F1F5F9",
+    borderColor: COLORS.creamDark,
   },
   skillOptionSelected: {
-    backgroundColor: "#EEF2FF",
-    borderColor: "#6366F1",
+    backgroundColor: COLORS.greenLight,
+    borderColor: COLORS.gold,
   },
   skillOptionImage: {
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: COLORS.creamDark,
   },
   skillOptionImagePlaceholder: {
     width: 44,
     height: 44,
     borderRadius: 10,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: COLORS.creamDark,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: COLORS.creamDark,
   },
   placeholderText: {
     fontSize: 9,
     fontWeight: "600",
-    color: "#94A3B8",
+    color: COLORS.light,
     textAlign: "center",
   },
   skillOptionInfo: {
@@ -2539,15 +2614,15 @@ const styles = StyleSheet.create({
   skillOptionText: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#1E293B",
+    color: COLORS.text,
   },
   skillOptionTextSelected: {
-    color: "#4338CA",
+    color: COLORS.green,
   },
   skillOptionPrice: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#4F46E5",
+    color: COLORS.green,
     marginTop: 2,
   },
   checkbox: {
@@ -2555,17 +2630,17 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: "#CBD5E1",
+    borderColor: COLORS.border,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: COLORS.surface,
   },
   checkboxSelected: {
-    backgroundColor: "#4F46E5",
-    borderColor: "#4F46E5",
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.green,
   },
   checkmark: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontSize: 12,
     fontWeight: "800",
     lineHeight: 14,
@@ -2573,18 +2648,18 @@ const styles = StyleSheet.create({
   closeButton: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#4F46E5",
+    backgroundColor: COLORS.green,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: RADIUS.control,
     marginTop: 12,
-    shadowColor: "#4F46E5",
+    shadowColor: COLORS.green,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 3,
   },
   closeButtonText: {
-    color: "#FFFFFF",
+    color: COLORS.surface,
     fontSize: 15,
     fontWeight: "600",
   },
