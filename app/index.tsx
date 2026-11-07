@@ -14,7 +14,7 @@ export default function HomeScreen() {
     (async () => {
       try {
         // Optional: If you are intentionally clearing it on mount for testing, use the variable:
-        await SecureStore.deleteItemAsync(TENANT_TOKEN_KEY);
+   //     await SecureStore.deleteItemAsync(TENANT_TOKEN_KEY);
         
         const token = await SecureStore.getItemAsync(TENANT_TOKEN_KEY);
         console.log("APP: tenant token found?", !!token);

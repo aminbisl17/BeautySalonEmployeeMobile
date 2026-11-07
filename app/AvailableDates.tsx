@@ -1,8 +1,9 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
   Modal,
   Pressable,
   RefreshControl,
@@ -150,6 +151,45 @@ const isDateOccupied = (
     return checkDate >= start && checkDate <= end;
   });
 };
+
+// --- Skeleton loader ---
+function SkeletonCard() {
+  const pulse = useRef(new Animated.Value(0.45)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0.45,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  return (
+    <Animated.View style={[styles.skeletonCard, { opacity: pulse }]}>
+      <View style={styles.skeletonIcon} />
+      <View style={{ flex: 1 }}>
+        <View style={[styles.skeletonLine, { width: "70%" }]} />
+        <View
+          style={[
+            styles.skeletonLine,
+            { width: "40%", height: 9, marginTop: 8 },
+          ]}
+        />
+      </View>
+    </Animated.View>
+  );
+}
 
 // --- Main Component ---
 export default function Availability() {
@@ -374,7 +414,7 @@ export default function Availability() {
     });
   };
 
-  // 1. S// 1. START DATE ONCHANGE
+  // 1. START DATE ONCHANGE
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
     // Handle Android back button/dismissal
     if (event?.type === "dismissed" || !selectedDate) return;
@@ -434,7 +474,6 @@ export default function Availability() {
       }
 
       // Select
-      // Select branch inside toggleSkill
       const serviceDetail: ServiceDetail = {
         ...selectedSkill.service,
         avaSkillId: skillId,
@@ -447,6 +486,7 @@ export default function Availability() {
       };
     });
   };
+
   // 2. END DATE ONCHANGE
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
     if (event?.type === "dismissed" || !selectedDate) return;
@@ -506,7 +546,11 @@ export default function Availability() {
 
         <View style={styles.heroIconRing}>
           <View style={styles.heroIcon}>
-            <Ionicons name="calendar-outline" size={32} color={COLORS.goldLight} />
+            <Ionicons
+              name="calendar-outline"
+              size={32}
+              color={COLORS.goldLight}
+            />
           </View>
         </View>
 
@@ -517,711 +561,371 @@ export default function Availability() {
       </View>
 
       <View style={styles.body}>
-      {/* CURRENT AVAILABILITY */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Disponueshmëria Aktuale</Text>
+        {/* CURRENT AVAILABILITY */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Disponueshmëria Aktuale</Text>
 
-        {loadingAvailability ? (
-          <Text style={styles.loading}>Po ngarkohen konfigurimet...</Text>
-        ) : (
-          availability.map((item) => {
-            const isSavedCardExpanded =
-              expandedSavedCard === item.id_availability;
-            const isEditing = editingAvailability === item.id_availability;
+          {loadingAvailability ? (
+            <View style={{ gap: 10 }}>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </View>
+          ) : (
+            availability.map((item) => {
+              const isSavedCardExpanded =
+                expandedSavedCard === item.id_availability;
+              const isEditing = editingAvailability === item.id_availability;
 
-            return (
-              <View key={item.id_availability} style={styles.cardGroupOuter}>
-                <View
-                  style={[
-                    styles.currentCard,
-                    isSavedCardExpanded && styles.cardActiveShadow,
-                  ]}
-                >
-                  <Pressable
-                    style={styles.currentHeaderRow}
-                    onPress={() =>
-                      setExpandedSavedCard(
-                        isSavedCardExpanded ? null : item.id_availability,
-                      )
-                    }
+              return (
+                <View key={item.id_availability} style={styles.cardGroupOuter}>
+                  <View
+                    style={[
+                      styles.currentCard,
+                      isSavedCardExpanded && styles.cardActiveShadow,
+                    ]}
                   >
-                    <View style={styles.headerTitleContainer}>
-                      <Ionicons
-                        name="calendar-outline"
-                        size={18}
-                        color={COLORS.green}
-                        style={{ marginRight: 8 }}
-                      />
-                      <Text style={styles.currentDateRange}>
-                        {formatDateAlbanian(item.start_date)} →{" "}
-                        {formatDateAlbanian(item.end_date)}
-                      </Text>
-                    </View>
-
-                    <Ionicons
-                      name={isSavedCardExpanded ? "chevron-up" : "chevron-down"}
-                      size={20}
-                      color={COLORS.light}
-                    />
-                  </Pressable>
-
-                  {isSavedCardExpanded &&
-                    (isEditing ? (
-                      <View style={styles.editContainer}>
-                        {/* ========================= */}
-                        {/* TAB SWITCHER HEADER       */}
-                        {/* ========================= */}
-                        <View style={styles.tabContainer}>
-                          <TouchableOpacity
-                            style={[
-                              styles.tabButton,
-                              activeTab === "days" && styles.activeTabButton,
-                            ]}
-                            onPress={() => setActiveTab("days")}
-                          >
-                            <Text
-                              style={[
-                                styles.tabButtonText,
-                                activeTab === "days" && styles.activeTabText,
-                              ]}
-                            >
-                              Days of Week
-                            </Text>
-                          </TouchableOpacity>
-
-                          <TouchableOpacity
-                            style={[
-                              styles.tabButton,
-                              activeTab === "skills" && styles.activeTabButton,
-                            ]}
-                            onPress={() => setActiveTab("skills")}
-                          >
-                            <Text
-                              style={[
-                                styles.tabButtonText,
-                                activeTab === "skills" && styles.activeTabText,
-                              ]}
-                            >
-                              Skills
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-
-                        {/* ========================= */}
-                        {/* AVAILABILITY DETAILS (DAYS)*/}
-                        {/* ========================= */}
-                        {activeTab === "days" && (
-                          <View style={styles.tabContent}>
-                            {editedData?.availabilityDetails.map((d, index) => {
-                              const workStart = parseTimeString(d.start_time);
-                              const workEnd = parseTimeString(d.end_time);
-                              const pauseStart = parseTimeString(
-                                d.pause_start || "12:00:00",
-                              );
-                              const pauseEnd = parseTimeString(
-                                d.pause_end || "13:00:00",
-                              );
-
-                              return (
-                                <View key={index} style={styles.editDayCard}>
-                                  <View style={styles.dayTitleRow}>
-                                    <View style={styles.detailBadge} />
-                                    <Text style={styles.dayNameActive}>
-                                      {DAY_NAMES[d.day_of_week]}
-                                    </Text>
-                                  </View>
-
-                                  {/* Work Times */}
-                                  <View style={styles.timeRow}>
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={styles.inputLabel}>
-                                        Ora e Fillimit
-                                      </Text>
-                                      <DateTimePicker
-                                        value={workStart}
-                                        mode="time"
-                                        display="compact"
-                                        is24Hour={true}
-                                        maximumDate={workEnd}
-                                        onChange={(e, date) => {
-                                          if (!date || !editedData) return;
-                                          const details = [
-                                            ...editedData.availabilityDetails,
-                                          ];
-                                          details[index] = {
-                                            ...details[index],
-                                            start_time: formatTimeString(date),
-                                          };
-                                          setEditedData({
-                                            ...editedData,
-                                            availabilityDetails: details,
-                                          });
-                                        }}
-                                      />
-                                    </View>
-
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={styles.inputLabel}>
-                                        Ora e Përfundimit
-                                      </Text>
-                                      <DateTimePicker
-                                        value={workEnd}
-                                        mode="time"
-                                        display="compact"
-                                        is24Hour={true}
-                                        minimumDate={workStart}
-                                        onChange={(e, date) => {
-                                          if (!date || !editedData) return;
-                                          const details = [
-                                            ...editedData.availabilityDetails,
-                                          ];
-                                          details[index] = {
-                                            ...details[index],
-                                            end_time: formatTimeString(date),
-                                          };
-                                          setEditedData({
-                                            ...editedData,
-                                            availabilityDetails: details,
-                                          });
-                                        }}
-                                      />
-                                    </View>
-                                  </View>
-
-                                  {/* Pause / Break Times */}
-                                  <View
-                                    style={[styles.timeRow, { marginTop: 10 }]}
-                                  >
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={styles.inputLabel}>
-                                        Fillimi i Pushimit
-                                      </Text>
-                                      <DateTimePicker
-                                        value={pauseStart}
-                                        mode="time"
-                                        display="compact"
-                                        is24Hour={true}
-                                        minimumDate={workStart}
-                                        maximumDate={pauseEnd}
-                                        onChange={(e, date) => {
-                                          if (!date || !editedData) return;
-                                          const details = [
-                                            ...editedData.availabilityDetails,
-                                          ];
-                                          details[index] = {
-                                            ...details[index],
-                                            pause_start: formatTimeString(date),
-                                          };
-                                          setEditedData({
-                                            ...editedData,
-                                            availabilityDetails: details,
-                                          });
-                                        }}
-                                      />
-                                    </View>
-
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={styles.inputLabel}>
-                                        Përfundimi i Pushimit
-                                      </Text>
-                                      <DateTimePicker
-                                        value={pauseEnd}
-                                        mode="time"
-                                        display="compact"
-                                        is24Hour={true}
-                                        minimumDate={pauseStart}
-                                        maximumDate={workEnd}
-                                        onChange={(e, date) => {
-                                          if (!date || !editedData) return;
-                                          const details = [
-                                            ...editedData.availabilityDetails,
-                                          ];
-                                          details[index] = {
-                                            ...details[index],
-                                            pause_end: formatTimeString(date),
-                                          };
-                                          setEditedData({
-                                            ...editedData,
-                                            availabilityDetails: details,
-                                          });
-                                        }}
-                                      />
-                                    </View>
-                                  </View>
-                                </View>
-                              );
-                            })}
-                          </View>
-                        )}
-
-                        {/* ========================= */}
-                        {/* AVAILABLE SKILLS          */}
-                        {/* ========================= */}
-                        {activeTab === "skills" && (
-                          <View style={styles.skillsSection}>
-                            <View style={styles.skillsHeader}>
-                              <Text style={styles.sectionTitle}>
-                                Available Skills
-                              </Text>
-
-                              <TouchableOpacity
-                                style={styles.addSkillButton}
-                                onPress={() => setShowSkillPicker(true)}
-                              >
-                                <Text style={styles.addSkillButtonText}>
-                                  + Add Skill
-                                </Text>
-                              </TouchableOpacity>
-                            </View>
-
-                            {editedData?.sherbimetDisplay?.length === 0 ? (
-                              <Text style={styles.noSkillsText}>
-                                No skills selected
-                              </Text>
-                            ) : (
-                              editedData?.sherbimetDisplay?.map((skill) => (
-                                <View
-                                  key={skill.avaSkillId}
-                                  style={styles.skillRow}
-                                >
-                                  {skill.imagePath ? (
-                                    <Image
-                                      source={{ uri: skill.imagePath }}
-                                      style={styles.serviceImage}
-                                      contentFit="cover"
-                                    />
-                                  ) : (
-                                    <View style={styles.skillImagePlaceholder}>
-                                      <Text style={styles.placeholderText}>
-                                        No Image
-                                      </Text>
-                                    </View>
-                                  )}
-
-                                  <View style={styles.skillInfo}>
-                                    <Text style={styles.skillName}>
-                                      {skill.emri_sherbimit}
-                                    </Text>
-
-                                    <Text style={styles.skillPrice}>
-                                      €{skill.qmimi_baze ?? 0}
-                                    </Text>
-                                  </View>
-
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      if (!editedData) return;
-
-                                      setEditedData({
-                                        ...editedData,
-                                        availableSkills:
-                                          editedData.availableSkills.filter(
-                                            (id) => id !== skill.avaSkillId,
-                                          ),
-                                        sherbimetDisplay:
-                                          editedData.sherbimetDisplay.filter(
-                                            (service) =>
-                                              service.avaSkillId !==
-                                              skill.avaSkillId,
-                                          ),
-                                      });
-                                    }}
-                                    style={styles.removeSkillButton}
-                                  >
-                                    <Text style={styles.removeSkillText}>
-                                      Remove
-                                    </Text>
-                                  </TouchableOpacity>
-                                </View>
-                              ))
-                            )}
-                          </View>
-                        )}
-
-                        {/* ========================= */}
-                        {/* SAVE / CANCEL BUTTONS     */}
-                        {/* ========================= */}
-                        <View style={styles.buttonRow}>
-                          <Pressable
-                            style={styles.cancelButton}
-                            onPress={() => {
-                              setEditingAvailability(null);
-                              setEditedData(null);
-                            }}
-                          >
-                            <Text style={styles.cancelButtonText}>Anulo</Text>
-                          </Pressable>
-
-                          <Pressable
-                            style={styles.saveButton}
-                            onPress={saveAvailability}
-                          >
-                            <Text style={styles.saveButtonText}>
-                              Ruaj Përditësimet
-                            </Text>
-                          </Pressable>
-                        </View>
+                    <Pressable
+                      style={styles.currentHeaderRow}
+                      onPress={() =>
+                        setExpandedSavedCard(
+                          isSavedCardExpanded ? null : item.id_availability,
+                        )
+                      }
+                    >
+                      <View style={styles.headerTitleContainer}>
+                        <Ionicons
+                          name="calendar-outline"
+                          size={18}
+                          color={COLORS.green}
+                          style={{ marginRight: 8 }}
+                        />
+                        <Text style={styles.currentDateRange}>
+                          {formatDateAlbanian(item.start_date)} →{" "}
+                          {formatDateAlbanian(item.end_date)}
+                        </Text>
                       </View>
-                    ) : (
-                      <View style={styles.cardGroupOuter}>
-                        <View
-                          style={[
-                            styles.currentCard,
-                            editingAvailability === item.id_availability &&
-                              styles.cardActiveShadow,
-                          ]}
-                        >
-                          {/* ========================================= */}
-                          {/* MODE 1: EDITING MODE                     */}
-                          {/* ========================================= */}
-                          {editingAvailability === item.id_availability ? (
-                            <View style={styles.editContainer}>
-                              {/* EDIT MODE TAB SWITCHER */}
-                              <View style={styles.tabContainer}>
-                                <TouchableOpacity
-                                  style={[
-                                    styles.tabButton,
-                                    activeTab === "days" &&
-                                      styles.activeTabButton,
-                                  ]}
-                                  onPress={() => setActiveTab("days")}
-                                >
-                                  <Ionicons
-                                    name="calendar-outline"
-                                    size={15}
-                                    color={
-                                      activeTab === "days"
-                                        ? COLORS.green
-                                        : COLORS.muted
-                                    }
-                                    style={{ marginRight: 6 }}
-                                  />
-                                  <Text
-                                    style={[
-                                      styles.tabButtonText,
-                                      activeTab === "days" &&
-                                        styles.activeTabText,
-                                    ]}
-                                  >
-                                    Days of Week
-                                  </Text>
-                                </TouchableOpacity>
+
+                      <Ionicons
+                        name={
+                          isSavedCardExpanded ? "chevron-up" : "chevron-down"
+                        }
+                        size={20}
+                        color={COLORS.light}
+                      />
+                    </Pressable>
+
+                    {isSavedCardExpanded &&
+                      (isEditing ? (
+                        <View style={styles.editContainer}>
+                          {/* TAB SWITCHER HEADER */}
+                          <View style={styles.tabContainer}>
+                            <TouchableOpacity
+                              style={[
+                                styles.tabButton,
+                                activeTab === "days" && styles.activeTabButton,
+                              ]}
+                              onPress={() => setActiveTab("days")}
+                            >
+                              <Text
+                                style={[
+                                  styles.tabButtonText,
+                                  activeTab === "days" && styles.activeTabText,
+                                ]}
+                              >
+                                Days of Week
+                              </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                              style={[
+                                styles.tabButton,
+                                activeTab === "skills" &&
+                                  styles.activeTabButton,
+                              ]}
+                              onPress={() => setActiveTab("skills")}
+                            >
+                              <Text
+                                style={[
+                                  styles.tabButtonText,
+                                  activeTab === "skills" &&
+                                    styles.activeTabText,
+                                ]}
+                              >
+                                Skills
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* AVAILABILITY DETAILS (DAYS) */}
+                          {activeTab === "days" && (
+                            <View style={styles.tabContent}>
+                              {editedData?.availabilityDetails.map(
+                                (d, index) => {
+                                  const workStart = parseTimeString(
+                                    d.start_time,
+                                  );
+                                  const workEnd = parseTimeString(d.end_time);
+                                  const pauseStart = parseTimeString(
+                                    d.pause_start || "12:00:00",
+                                  );
+                                  const pauseEnd = parseTimeString(
+                                    d.pause_end || "13:00:00",
+                                  );
+
+                                  return (
+                                    <View
+                                      key={index}
+                                      style={styles.editDayCard}
+                                    >
+                                      <View style={styles.dayTitleRow}>
+                                        <View style={styles.detailBadge} />
+                                        <Text style={styles.dayNameActive}>
+                                          {DAY_NAMES[d.day_of_week]}
+                                        </Text>
+                                      </View>
+
+                                      {/* Work Times */}
+                                      <View style={styles.timeRow}>
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={styles.inputLabel}>
+                                            Ora e Fillimit
+                                          </Text>
+                                          <DateTimePicker
+                                            value={workStart}
+                                            mode="time"
+                                            display="compact"
+                                            is24Hour={true}
+                                            maximumDate={workEnd}
+                                            onChange={(e, date) => {
+                                              if (!date || !editedData) return;
+                                              const details = [
+                                                ...editedData.availabilityDetails,
+                                              ];
+                                              details[index] = {
+                                                ...details[index],
+                                                start_time:
+                                                  formatTimeString(date),
+                                              };
+                                              setEditedData({
+                                                ...editedData,
+                                                availabilityDetails: details,
+                                              });
+                                            }}
+                                          />
+                                        </View>
+
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={styles.inputLabel}>
+                                            Ora e Përfundimit
+                                          </Text>
+                                          <DateTimePicker
+                                            value={workEnd}
+                                            mode="time"
+                                            display="compact"
+                                            is24Hour={true}
+                                            minimumDate={workStart}
+                                            onChange={(e, date) => {
+                                              if (!date || !editedData) return;
+                                              const details = [
+                                                ...editedData.availabilityDetails,
+                                              ];
+                                              details[index] = {
+                                                ...details[index],
+                                                end_time:
+                                                  formatTimeString(date),
+                                              };
+                                              setEditedData({
+                                                ...editedData,
+                                                availabilityDetails: details,
+                                              });
+                                            }}
+                                          />
+                                        </View>
+                                      </View>
+
+                                      {/* Pause / Break Times */}
+                                      <View
+                                        style={[
+                                          styles.timeRow,
+                                          { marginTop: 10 },
+                                        ]}
+                                      >
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={styles.inputLabel}>
+                                            Fillimi i Pushimit
+                                          </Text>
+                                          <DateTimePicker
+                                            value={pauseStart}
+                                            mode="time"
+                                            display="compact"
+                                            is24Hour={true}
+                                            minimumDate={workStart}
+                                            maximumDate={pauseEnd}
+                                            onChange={(e, date) => {
+                                              if (!date || !editedData) return;
+                                              const details = [
+                                                ...editedData.availabilityDetails,
+                                              ];
+                                              details[index] = {
+                                                ...details[index],
+                                                pause_start:
+                                                  formatTimeString(date),
+                                              };
+                                              setEditedData({
+                                                ...editedData,
+                                                availabilityDetails: details,
+                                              });
+                                            }}
+                                          />
+                                        </View>
+
+                                        <View style={{ flex: 1 }}>
+                                          <Text style={styles.inputLabel}>
+                                            Përfundimi i Pushimit
+                                          </Text>
+                                          <DateTimePicker
+                                            value={pauseEnd}
+                                            mode="time"
+                                            display="compact"
+                                            is24Hour={true}
+                                            minimumDate={pauseStart}
+                                            maximumDate={workEnd}
+                                            onChange={(e, date) => {
+                                              if (!date || !editedData) return;
+                                              const details = [
+                                                ...editedData.availabilityDetails,
+                                              ];
+                                              details[index] = {
+                                                ...details[index],
+                                                pause_end:
+                                                  formatTimeString(date),
+                                              };
+                                              setEditedData({
+                                                ...editedData,
+                                                availabilityDetails: details,
+                                              });
+                                            }}
+                                          />
+                                        </View>
+                                      </View>
+                                    </View>
+                                  );
+                                },
+                              )}
+                            </View>
+                          )}
+
+                          {/* AVAILABLE SKILLS */}
+                          {activeTab === "skills" && (
+                            <View style={styles.skillsSection}>
+                              <View style={styles.skillsHeader}>
+                                <Text style={styles.sectionTitle}>
+                                  Available Skills
+                                </Text>
 
                                 <TouchableOpacity
-                                  style={[
-                                    styles.tabButton,
-                                    activeTab === "skills" &&
-                                      styles.activeTabButton,
-                                  ]}
-                                  onPress={() => setActiveTab("skills")}
+                                  style={styles.addSkillButton}
+                                  onPress={() => setShowSkillPicker(true)}
                                 >
-                                  <Ionicons
-                                    name="sparkles-outline"
-                                    size={15}
-                                    color={
-                                      activeTab === "skills"
-                                        ? COLORS.green
-                                        : COLORS.muted
-                                    }
-                                    style={{ marginRight: 6 }}
-                                  />
-                                  <Text
-                                    style={[
-                                      styles.tabButtonText,
-                                      activeTab === "skills" &&
-                                        styles.activeTabText,
-                                    ]}
-                                  >
-                                    Skills
+                                  <Text style={styles.addSkillButtonText}>
+                                    + Add Skill
                                   </Text>
                                 </TouchableOpacity>
                               </View>
 
-                              {/* TAB 1: DAYS (EDIT) */}
-                              {activeTab === "days" && (
-                                <View style={styles.tabContent}>
-                                  {editedData?.availabilityDetails.map(
-                                    (d, index) => {
-                                      const workStart = parseTimeString(
-                                        d.start_time,
-                                      );
-                                      const workEnd = parseTimeString(
-                                        d.end_time,
-                                      );
-                                      const pauseStart = parseTimeString(
-                                        d.pause_start || "12:00:00",
-                                      );
-                                      const pauseEnd = parseTimeString(
-                                        d.pause_end || "13:00:00",
-                                      );
+                              {editedData?.sherbimetDisplay?.length === 0 ? (
+                                <Text style={styles.noSkillsText}>
+                                  No skills selected
+                                </Text>
+                              ) : (
+                                editedData?.sherbimetDisplay?.map((skill) => (
+                                  <View
+                                    key={skill.avaSkillId}
+                                    style={styles.skillRow}
+                                  >
+                                    {skill.imagePath ? (
+                                      <Image
+                                        source={{ uri: skill.imagePath }}
+                                        style={styles.serviceImage}
+                                        contentFit="cover"
+                                      />
+                                    ) : (
+                                      <View
+                                        style={styles.skillImagePlaceholder}
+                                      >
+                                        <Text style={styles.placeholderText}>
+                                          No Image
+                                        </Text>
+                                      </View>
+                                    )}
 
-                                      return (
-                                        <View
-                                          key={index}
-                                          style={styles.editDayCard}
-                                        >
-                                          <View style={styles.dayTitleRow}>
-                                            <View style={styles.detailBadge} />
-                                            <Text style={styles.dayNameActive}>
-                                              {DAY_NAMES[d.day_of_week]}
-                                            </Text>
-                                          </View>
+                                    <View style={styles.skillInfo}>
+                                      <Text style={styles.skillName}>
+                                        {skill.emri_sherbimit}
+                                      </Text>
 
-                                          <View style={styles.timeRow}>
-                                            <View style={{ flex: 1 }}>
-                                              <Text style={styles.inputLabel}>
-                                                Ora e Fillimit
-                                              </Text>
-                                              <DateTimePicker
-                                                value={workStart}
-                                                mode="time"
-                                                display="compact"
-                                                is24Hour={true}
-                                                maximumDate={workEnd}
-                                                onChange={(e, date) => {
-                                                  if (!date || !editedData)
-                                                    return;
-                                                  const details = [
-                                                    ...editedData.availabilityDetails,
-                                                  ];
-                                                  details[index] = {
-                                                    ...details[index],
-                                                    start_time:
-                                                      formatTimeString(date),
-                                                  };
-                                                  setEditedData({
-                                                    ...editedData,
-                                                    availabilityDetails:
-                                                      details,
-                                                  });
-                                                }}
-                                              />
-                                            </View>
+                                      <Text style={styles.skillPrice}>
+                                        €{skill.qmimi_baze ?? 0}
+                                      </Text>
+                                    </View>
 
-                                            <View style={{ flex: 1 }}>
-                                              <Text style={styles.inputLabel}>
-                                                Ora e Përfundimit
-                                              </Text>
-                                              <DateTimePicker
-                                                value={workEnd}
-                                                mode="time"
-                                                display="compact"
-                                                is24Hour={true}
-                                                minimumDate={workStart}
-                                                onChange={(e, date) => {
-                                                  if (!date || !editedData)
-                                                    return;
-                                                  const details = [
-                                                    ...editedData.availabilityDetails,
-                                                  ];
-                                                  details[index] = {
-                                                    ...details[index],
-                                                    end_time:
-                                                      formatTimeString(date),
-                                                  };
-                                                  setEditedData({
-                                                    ...editedData,
-                                                    availabilityDetails:
-                                                      details,
-                                                  });
-                                                }}
-                                              />
-                                            </View>
-                                          </View>
-
-                                          <View
-                                            style={[
-                                              styles.timeRow,
-                                              { marginTop: 10 },
-                                            ]}
-                                          >
-                                            <View style={{ flex: 1 }}>
-                                              <Text style={styles.inputLabel}>
-                                                Fillimi i Pushimit
-                                              </Text>
-                                              <DateTimePicker
-                                                value={pauseStart}
-                                                mode="time"
-                                                display="compact"
-                                                is24Hour={true}
-                                                minimumDate={workStart}
-                                                maximumDate={pauseEnd}
-                                                onChange={(e, date) => {
-                                                  if (!date || !editedData)
-                                                    return;
-                                                  const details = [
-                                                    ...editedData.availabilityDetails,
-                                                  ];
-                                                  details[index] = {
-                                                    ...details[index],
-                                                    pause_start:
-                                                      formatTimeString(date),
-                                                  };
-                                                  setEditedData({
-                                                    ...editedData,
-                                                    availabilityDetails:
-                                                      details,
-                                                  });
-                                                }}
-                                              />
-                                            </View>
-
-                                            <View style={{ flex: 1 }}>
-                                              <Text style={styles.inputLabel}>
-                                                Përfundimi i Pushimit
-                                              </Text>
-                                              <DateTimePicker
-                                                value={pauseEnd}
-                                                mode="time"
-                                                display="compact"
-                                                is24Hour={true}
-                                                minimumDate={pauseStart}
-                                                maximumDate={workEnd}
-                                                onChange={(e, date) => {
-                                                  if (!date || !editedData)
-                                                    return;
-                                                  const details = [
-                                                    ...editedData.availabilityDetails,
-                                                  ];
-                                                  details[index] = {
-                                                    ...details[index],
-                                                    pause_end:
-                                                      formatTimeString(date),
-                                                  };
-                                                  setEditedData({
-                                                    ...editedData,
-                                                    availabilityDetails:
-                                                      details,
-                                                  });
-                                                }}
-                                              />
-                                            </View>
-                                          </View>
-                                        </View>
-                                      );
-                                    },
-                                  )}
-                                </View>
-                              )}
-
-                              {/* TAB 2: SKILLS (EDIT) */}
-                              {activeTab === "skills" && (
-                                <View style={styles.skillsSection}>
-                                  <View style={styles.skillsHeader}>
-                                    <Text style={styles.sectionTitle}>
-                                      Available Skills
-                                    </Text>
                                     <TouchableOpacity
-                                      style={styles.addSkillButton}
-                                      onPress={() => setShowSkillPicker(true)}
+                                      onPress={() => {
+                                        if (!editedData) return;
+
+                                        setEditedData({
+                                          ...editedData,
+                                          availableSkills:
+                                            editedData.availableSkills.filter(
+                                              (id) => id !== skill.avaSkillId,
+                                            ),
+                                          sherbimetDisplay:
+                                            editedData.sherbimetDisplay.filter(
+                                              (service) =>
+                                                service.avaSkillId !==
+                                                skill.avaSkillId,
+                                            ),
+                                        });
+                                      }}
+                                      style={styles.removeSkillButton}
                                     >
-                                      <Text style={styles.addSkillButtonText}>
-                                        + Add Skill
+                                      <Text style={styles.removeSkillText}>
+                                        Remove
                                       </Text>
                                     </TouchableOpacity>
                                   </View>
-
-                                  {editedData?.sherbimetDisplay?.length ===
-                                  0 ? (
-                                    <Text style={styles.noSkillsText}>
-                                      No skills selected
-                                    </Text>
-                                  ) : (
-                                    editedData?.sherbimetDisplay?.map(
-                                      (skill) => (
-                                        <View
-                                          key={skill.avaSkillId}
-                                          style={styles.skillRow}
-                                        >
-                                          {skill.imagePath ? (
-                                            <Image
-                                              source={{ uri: skill.imagePath }}
-                                              style={styles.serviceImage}
-                                              contentFit="cover"
-                                            />
-                                          ) : (
-                                            <View
-                                              style={
-                                                styles.skillImagePlaceholder
-                                              }
-                                            >
-                                              <Text
-                                                style={styles.placeholderText}
-                                              >
-                                                No Image
-                                              </Text>
-                                            </View>
-                                          )}
-                                          <View style={styles.skillInfo}>
-                                            <Text style={styles.skillName}>
-                                              {skill.emri_sherbimit}
-                                            </Text>
-                                            <Text style={styles.skillPrice}>
-                                              €{skill.qmimi_baze ?? 0}
-                                            </Text>
-                                          </View>
-
-                                          <TouchableOpacity
-                                            onPress={() => {
-                                              if (!editedData) return;
-                                              setEditedData({
-                                                ...editedData,
-                                                availableSkills:
-                                                  editedData.availableSkills.filter(
-                                                    (id) =>
-                                                      id !== skill.avaSkillId,
-                                                  ),
-                                                sherbimetDisplay:
-                                                  editedData.sherbimetDisplay.filter(
-                                                    (service) =>
-                                                      service.avaSkillId !==
-                                                      skill.avaSkillId,
-                                                  ),
-                                              });
-                                            }}
-                                            style={styles.removeSkillButton}
-                                          >
-                                            <Text
-                                              style={styles.removeSkillText}
-                                            >
-                                              Remove
-                                            </Text>
-                                          </TouchableOpacity>
-                                        </View>
-                                      ),
-                                    )
-                                  )}
-                                </View>
+                                ))
                               )}
-
-                              {/* EDIT ACTION BUTTONS */}
-                              <View style={styles.buttonRow}>
-                                <Pressable
-                                  style={styles.cancelButton}
-                                  onPress={() => {
-                                    setEditingAvailability(null);
-                                    setEditedData(null);
-                                  }}
-                                >
-                                  <Text style={styles.cancelButtonText}>
-                                    Anulo
-                                  </Text>
-                                </Pressable>
-
-                                <Pressable
-                                  style={styles.saveButton}
-                                  onPress={saveAvailability}
-                                >
-                                  <Text style={styles.saveButtonText}>
-                                    Ruaj Përditësimet
-                                  </Text>
-                                </Pressable>
-                              </View>
                             </View>
-                          ) : (
-                            /* ========================================= */
-                            /* MODE 2: DISPLAY / READ-ONLY MODE         */
-                            /* ========================================= */
+                          )}
+
+                          {/* SAVE / CANCEL BUTTONS */}
+                          <View style={styles.buttonRow}>
+                            <Pressable
+                              style={styles.cancelButton}
+                              onPress={() => {
+                                setEditingAvailability(null);
+                                setEditedData(null);
+                              }}
+                            >
+                              <Text style={styles.cancelButtonText}>Anulo</Text>
+                            </Pressable>
+
+                            <Pressable
+                              style={styles.saveButton}
+                              onPress={saveAvailability}
+                            >
+                              <Text style={styles.saveButtonText}>
+                                Ruaj Përditësimet
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.cardGroupOuter}>
+                          <View style={styles.currentCard}>
+                            {/* DISPLAY / READ-ONLY MODE */}
                             <View style={{ marginTop: 12 }}>
                               {/* READ-ONLY TAB SWITCHER */}
                               <View style={styles.tabContainer}>
@@ -1318,7 +1022,6 @@ export default function Availability() {
                               )}
 
                               {/* TAB 2: DISPLAY SKILLS */}
-
                               {activeTab === "skills" && (
                                 <View style={styles.tabContent}>
                                   {item?.sherbimetDisplay &&
@@ -1330,18 +1033,27 @@ export default function Availability() {
                                           style={styles.serviceCard}
                                         >
                                           {sherbi.imagePath ? (
-                                           <Image
-  source={{ uri: sherbi.imagePath }}
-  style={styles.serviceImage}
-  contentFit="cover"
-  onLoad={(event) => {
-    console.log("IMAGE LOADED:", event.source);
-  }}
-  onError={(event) => {
-    console.log("IMAGE URL:", sherbi.imagePath);
-    console.log("IMAGE ERROR:", event.error);
-  }}
-/>
+                                            <Image
+                                              source={{ uri: sherbi.imagePath }}
+                                              style={styles.serviceImage}
+                                              contentFit="cover"
+                                              onLoad={(event) => {
+                                                console.log(
+                                                  "IMAGE LOADED:",
+                                                  event.source,
+                                                );
+                                              }}
+                                              onError={(event) => {
+                                                console.log(
+                                                  "IMAGE URL:",
+                                                  sherbi.imagePath,
+                                                );
+                                                console.log(
+                                                  "IMAGE ERROR:",
+                                                  event.error,
+                                                );
+                                              }}
+                                            />
                                           ) : (
                                             <View
                                               style={
@@ -1439,217 +1151,324 @@ export default function Availability() {
                                 </Pressable>
                               </View>
                             </View>
-                          )}
+                          </View>
                         </View>
-                      </View>
-                    ))}
+                      ))}
+                  </View>
+                </View>
+              );
+            })
+          )}
+
+          {!loadingAvailability && availability.length === 0 && (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name="calendar-clear-outline"
+                  size={26}
+                  color={COLORS.green}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>Asnjë disponueshmëri</Text>
+              <Text style={styles.emptySubtitle}>
+                Shtoni një periudhë të re për të filluar pranimin e termineve.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* EXPANDABLE TRIGGER FOR CONFIGURATION FORM */}
+        <View style={styles.section}>
+          <Pressable
+            style={[
+              styles.setupToggleFormButton,
+              styles.skillsSelectButton,
+              showSetupForm && styles.setupToggleFormButtonActive,
+            ]}
+            onPress={() => setShowSetupForm(!showSetupForm)}
+          >
+            <View>
+              <Text style={styles.setupToggleTitle}>
+                Vendos Disponueshmëri të Re
+              </Text>
+              <Text style={styles.setupToggleSubtitle}>
+                Përcaktoni datat, ditët aktive dhe oraret
+              </Text>
+            </View>
+            <Ionicons
+              name={showSetupForm ? "chevron-up" : "chevron-down"}
+              size={22}
+              color={COLORS.green}
+            />
+          </Pressable>
+
+          {showSetupForm && (
+            <View style={styles.formContainer}>
+              {/* STEP 1: DATE RANGE */}
+              <View style={styles.stepHeader}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>1</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stepTitle}>Periudha e Datave</Text>
+                  <Text style={styles.stepSubtitle}>
+                    Nga data e fillimit deri në përfundim
+                  </Text>
+                </View>
+                <View style={styles.rangeChip}>
+                  <Ionicons name="time-outline" size={12} color={COLORS.green} />
+                  <Text style={styles.rangeChipText}>
+                    {Math.max(
+                      1,
+                      Math.round(
+                        (endDate.getTime() - startDate.getTime()) / 86400000,
+                      ) + 1,
+                    )}{" "}
+                    ditë
+                  </Text>
                 </View>
               </View>
-            );
-          })
-        )}
-      </View>
 
-      {/* EXPANDABLE TRIGGER FOR CONFIGURATION FORM */}
-      <View style={styles.section}>
-        <Pressable
-          style={[
-            styles.setupToggleFormButton,
-            styles.skillsSelectButton,
-            showSetupForm && styles.setupToggleFormButtonActive,
-          ]}
-          onPress={() => setShowSetupForm(!showSetupForm)}
-        >
-          <View>
-            <Text style={styles.setupToggleTitle}>
-              Vendos Disponueshmëri të Re
-            </Text>
-            <Text style={styles.setupToggleSubtitle}>
-              Përcaktoni datat, ditët aktive dhe oraret
-            </Text>
-          </View>
-          <Ionicons
-            name={showSetupForm ? "chevron-up" : "chevron-down"}
-            size={22}
-            color={COLORS.green}
-          />
-        </Pressable>
-        {showSetupForm && (
-          <View style={styles.formContainer}>
-            {/* DATE RANGE */}
-            <Text style={styles.innerSectionTitle}>
-              Zgjidh Periudhën e Datave
-            </Text>
+              <View style={styles.dateRangeCard}>
+                <View style={styles.dateCol}>
+                  <Text style={styles.dateColLabel}>Fillon</Text>
+                  <DateTimePicker
+                    value={
+                      startDate instanceof Date && !isNaN(startDate.getTime())
+                        ? startDate
+                        : new Date()
+                    }
+                    mode="date"
+                    display="compact"
+                    onChange={handleStartDateChange}
+                  />
+                </View>
 
-            <View style={styles.cardGroup}>
-              {/* START DATE */}
-              <View style={styles.cellRow}>
-                <Text style={styles.cellLabel}>Data e Fillimit</Text>
-                <DateTimePicker
-                  value={
-                    startDate instanceof Date && !isNaN(startDate.getTime())
-                      ? startDate
-                      : new Date()
-                  }
-                  mode="date"
-                  display="compact"
-                  onChange={handleStartDateChange}
+                <View style={styles.dateArrow}>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={16}
+                    color={COLORS.green}
+                  />
+                </View>
+
+                <View style={[styles.dateCol, { alignItems: "flex-end" }]}>
+                  <Text style={styles.dateColLabel}>Përfundon</Text>
+                  <DateTimePicker
+                    value={
+                      endDate instanceof Date && !isNaN(endDate.getTime())
+                        ? endDate
+                        : new Date()
+                    }
+                    mode="date"
+                    display="compact"
+                    minimumDate={
+                      startDate instanceof Date && !isNaN(startDate.getTime())
+                        ? startDate
+                        : new Date()
+                    }
+                    onChange={handleEndDateChange}
+                  />
+                </View>
+              </View>
+
+              <Pressable
+                style={[
+                  styles.setupToggleFormButton,
+                  styles.skillsSelectButton,
+                  showSkillsForm && styles.setupToggleFormButtonActive,
+                ]}
+                onPress={() => setSkillsForm(!showSkillsForm)}
+              >
+                <View style={styles.headerLeft}>
+                  <Text style={styles.setupToggleTitle}>Zgjedh Shërbimet</Text>
+                  <Text style={styles.setupToggleSubtitle}>
+                    Zgjidhni shërbimet apo aftësitë e aplikueshme
+                  </Text>
+                </View>
+                <Ionicons
+                  name={showSkillsForm ? "chevron-up" : "chevron-down"}
+                  size={22}
+                  color={COLORS.green}
                 />
+              </Pressable>
+
+              {showSkillsForm && (
+                <View style={styles.skillsListContainer}>
+                  {skills.map((item: EmployeeService) => {
+                    const { service } = item;
+                    const isSelected = selectedSkillIds.includes(item.id);
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        style={[
+                          styles.serviceCard,
+                          isSelected && styles.serviceCardSelected,
+                        ]}
+                        onPress={() => toggleSkillSelection(item.id)}
+                      >
+                        <View style={styles.serviceMainRow}>
+                          {/* CHECKBOX INDICATOR */}
+                          <Ionicons
+                            name={isSelected ? "checkbox" : "square-outline"}
+                            size={22}
+                            color={isSelected ? COLORS.green : COLORS.light}
+                            style={{ alignSelf: "center", marginRight: 4 }}
+                          />
+
+                          {/* SERVICE IMAGE */}
+                          {service?.imagePath ? (
+                            <Image
+                              source={{ uri: service.imagePath }}
+                              style={styles.serviceImage}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <View
+                              style={[
+                                styles.serviceImage,
+                                styles.imagePlaceholder,
+                              ]}
+                            >
+                              <Ionicons
+                                name="image-outline"
+                                size={24}
+                                color={COLORS.light}
+                              />
+                            </View>
+                          )}
+
+                          {/* SERVICE DETAILS */}
+                          <View style={styles.serviceContent}>
+                            <Text style={styles.serviceTitle}>
+                              {service.emri_sherbimit}
+                            </Text>
+                            <Text style={styles.metaText}>
+                              {service.kohezgjatja} min
+                            </Text>
+                          </View>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* STEP 2: WORKING DAYS */}
+              <View style={[styles.stepHeader, { marginTop: 28 }]}>
+                <View style={styles.stepNumber}>
+                  <Text style={styles.stepNumberText}>2</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.stepTitle}>Ditët e Punës</Text>
+                  <Text style={styles.stepSubtitle}>
+                    Aktivizoni ditët dhe caktoni oraret
+                  </Text>
+                </View>
+                <View style={styles.rangeChip}>
+                  <Text style={styles.rangeChipText}>
+                    {
+                      days.filter(
+                        (d) => d.enabled && availableDays.includes(d.id),
+                      ).length
+                    }{" "}
+                    aktive
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.separator} />
+              {days
+                .filter((day) => availableDays.includes(day.id))
+                .map((day) => {
+                  const isExpanded = expanded === day.id;
 
-              {/* END DATE */}
-              <View style={styles.cellRow}>
-                <Text style={styles.cellLabel}>Data e Përfundimit</Text>
-                <DateTimePicker
-                  value={
-                    endDate instanceof Date && !isNaN(endDate.getTime())
-                      ? endDate
-                      : new Date()
-                  }
-                  mode="date"
-                  display="compact"
-                  minimumDate={
-                    startDate instanceof Date && !isNaN(startDate.getTime())
-                      ? startDate
-                      : new Date()
-                  }
-                  onChange={handleEndDateChange}
-                />
-              </View>
-            </View>
-
-            <Pressable
-              style={[
-                styles.setupToggleFormButton,
-                styles.skillsSelectButton,
-                showSkillsForm && styles.setupToggleFormButtonActive,
-              ]}
-              onPress={() => setSkillsForm(!showSkillsForm)}
-            >
-              <View style={styles.headerLeft}>
-                <Text style={styles.setupToggleTitle}>Zgjedh Shërbimet</Text>
-                <Text style={styles.setupToggleSubtitle}>
-                  Zgjidhni shërbimet apo aftësitë e aplikueshme
-                </Text>
-              </View>
-              <Ionicons
-                name={showSkillsForm ? "chevron-up" : "chevron-down"}
-                size={22}
-                color={COLORS.green}
-              />
-            </Pressable>
-            {showSkillsForm && (
-              <View style={styles.skillsListContainer}>
-                {skills.map((item: EmployeeService) => {
-                  const { service } = item;
-                  const isSelected = selectedSkillIds.includes(item.id); // Check if skill ID is selected
+                  const workStart = parseTimeString(day.start_time);
+                  const workEnd = parseTimeString(day.end_time);
+                  const pauseStart = parseTimeString(
+                    day.pause_start || "12:00:00",
+                  );
+                  const pauseEnd = parseTimeString(day.pause_end || "13:00:00");
 
                   return (
-                    <Pressable
-                      key={item.id}
-                      style={[
-                        styles.serviceCard,
-                        isSelected && styles.serviceCardSelected, // Highlight selected card
-                      ]}
-                      onPress={() => toggleSkillSelection(item.id)}
-                    >
-                      <View style={styles.serviceMainRow}>
-                        {/* CHECKBOX INDICATOR */}
-                        <Ionicons
-                          name={isSelected ? "checkbox" : "square-outline"}
-                          size={22}
-                          color={isSelected ? COLORS.green : COLORS.light}
-                          style={{ alignSelf: "center", marginRight: 4 }}
-                        />
-
-                        {/* SERVICE IMAGE */}
-                        {/* SERVICE IMAGE */}
-                        {service?.imagePath ? (
-                          <Image
-                            source={{ uri: service.imagePath }}
-                            style={styles.serviceImage}
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.serviceImage,
-                              styles.imagePlaceholder,
-                            ]}
-                          >
-                            <Ionicons
-                              name="image-outline"
-                              size={24}
-                              color={COLORS.light}
-                            />
-                          </View>
-                        )}
-
-                        {/* SERVICE DETAILS */}
-                        <View style={styles.serviceContent}>
-                          <Text style={styles.serviceTitle}>
-                            {service.emri_sherbimit}
-                          </Text>
-                          <Text style={styles.metaText}>
-                            {service.kohezgjatja} min
-                          </Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-            {/* WORKING DAYS */}
-            <Text style={[styles.innerSectionTitle, { marginTop: 24 }]}>
-              Konfigurimi i Ditëve të Punës
-            </Text>
-            {days
-              .filter((day) => availableDays.includes(day.id))
-              .map((day) => {
-                const isExpanded = expanded === day.id;
-
-                const workStart = parseTimeString(day.start_time);
-                const workEnd = parseTimeString(day.end_time);
-                const pauseStart = parseTimeString(
-                  day.pause_start || "12:00:00",
-                );
-                const pauseEnd = parseTimeString(day.pause_end || "13:00:00");
-
-                return (
-                  <View key={day.id} style={styles.cardGroupOuter}>
                     <View
-                      style={[
-                        styles.cardGroup,
-                        day.enabled && styles.cardActiveBorder,
-                      ]}
+                      key={day.id}
+                      style={[styles.dayCard, day.enabled && styles.dayCardActive]}
                     >
                       <Pressable
-                        style={styles.cellRow}
+                        style={styles.dayHeader}
                         onPress={() => setExpanded(isExpanded ? null : day.id)}
                       >
+                        <View
+                          style={[
+                            styles.dayBadge,
+                            day.enabled && styles.dayBadgeActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.dayBadgeText,
+                              day.enabled && styles.dayBadgeTextActive,
+                            ]}
+                          >
+                            {day.name.replace("E ", "").slice(0, 3)}
+                          </Text>
+                        </View>
+
                         <View style={styles.headerLeft}>
                           <Text
                             style={[
                               styles.dayName,
-                              day.enabled && styles.dayNameActive,
+                              day.enabled && styles.dayNameStrong,
                             ]}
                           >
                             {day.name}
                           </Text>
-                          <Text style={styles.statusSubtitle}>
-                            {day.enabled
-                              ? `${day.start_time} - ${day.end_time}`
-                              : "Mbyllur / E Padisponueshme"}
-                          </Text>
+
+                          {day.enabled ? (
+                            <View style={styles.chipRow}>
+                              <View style={styles.timeChip}>
+                                <Ionicons
+                                  name="time-outline"
+                                  size={11}
+                                  color={COLORS.green}
+                                />
+                                <Text style={styles.timeChipText}>
+                                  {day.start_time} – {day.end_time}
+                                </Text>
+                              </View>
+                              <View style={[styles.timeChip, styles.pauseChip]}>
+                                <Ionicons
+                                  name="cafe-outline"
+                                  size={11}
+                                  color={COLORS.muted}
+                                />
+                                <Text
+                                  style={[
+                                    styles.timeChipText,
+                                    { color: COLORS.muted },
+                                  ]}
+                                >
+                                  {day.pause_start} – {day.pause_end}
+                                </Text>
+                              </View>
+                            </View>
+                          ) : (
+                            <Text style={styles.statusSubtitle}>
+                              Mbyllur / E Padisponueshme
+                            </Text>
+                          )}
                         </View>
 
                         <View style={styles.headerRight}>
                           <Switch
-                            trackColor={{ false: COLORS.creamDark, true: COLORS.gold }}
-                            thumbColor={day.enabled ? COLORS.green : COLORS.light}
+                            trackColor={{
+                              false: COLORS.creamDark,
+                              true: COLORS.gold,
+                            }}
+                            thumbColor={
+                              day.enabled ? COLORS.green : COLORS.light
+                            }
                             value={day.enabled}
                             onValueChange={(v) =>
                               updateDay(day.id, "enabled", v)
@@ -1665,7 +1484,14 @@ export default function Availability() {
 
                       {isExpanded && day.enabled && (
                         <View style={styles.dayContent}>
-                          <Text style={styles.groupLabel}>Oraret e Punës</Text>
+                          <View style={styles.groupHeader}>
+                            <Ionicons
+                              name="briefcase-outline"
+                              size={14}
+                              color={COLORS.green}
+                            />
+                            <Text style={styles.groupLabel}>Oraret e Punës</Text>
+                          </View>
                           <View style={styles.timeRow}>
                             <View style={styles.timeCell}>
                               <Text style={styles.timeLabel}>Fillon</Text>
@@ -1705,9 +1531,16 @@ export default function Availability() {
                             </View>
                           </View>
 
-                          <Text style={[styles.groupLabel, { marginTop: 18 }]}>
-                            Kohëzgjatja e Pushimit
-                          </Text>
+                          <View style={[styles.groupHeader, { marginTop: 18 }]}>
+                            <Ionicons
+                              name="cafe-outline"
+                              size={14}
+                              color={COLORS.green}
+                            />
+                            <Text style={styles.groupLabel}>
+                              Kohëzgjatja e Pushimit
+                            </Text>
+                          </View>
                           <View style={styles.timeRow}>
                             <View style={styles.timeCell}>
                               <Text style={styles.timeLabel}>Nga</Text>
@@ -1750,101 +1583,113 @@ export default function Availability() {
                           </View>
                         </View>
                       )}
-                    </View>
-                  </View>
-                );
-              })}
 
-            <Pressable style={styles.submitButton} onPress={setDates}>
-              <Text style={styles.submitButtonText}>Ruaj Disponueshmërinë</Text>
-            </Pressable>
-          </View>
-        )}
-
-        <Modal
-          visible={showSkillPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowSkillPicker(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.skillModal}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Available Skills</Text>
-                <Text style={styles.modalSubtitle}>
-                  Select skills to assign
-                </Text>
-              </View>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-              >
-                {skills.map((skill: EmployeeService) => {
-                  const selected =
-                    editedData?.availableSkills?.includes(skill.id) ?? false;
-
-                  return (
-                    <TouchableOpacity
-                      key={skill.id}
-                      activeOpacity={0.7}
-                      style={[
-                        styles.skillOption,
-                        selected && styles.skillOptionSelected,
-                      ]}
-                      onPress={() => toggleSkill(skill.id)}
-                    >
-                      {/* Check for whichever property exists on the service object */}
-                      {skill.service?.imagePath ? (
-                        <Image
-                          source={{ uri: skill.service.imagePath }}
-                          style={styles.serviceImage}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View
-                          style={[styles.serviceImage, styles.imagePlaceholder]}
-                        >
-                          <Text style={styles.placeholderText}>No Image</Text>
+                      {isExpanded && !day.enabled && (
+                        <View style={styles.dayContent}>
+                          <Text style={styles.hintText}>
+                            Aktivizoni këtë ditë për të caktuar oraret.
+                          </Text>
                         </View>
                       )}
-
-                      <View style={styles.skillOptionInfo}>
-                        <Text style={styles.skillOptionText}>
-                          {skill.service?.emri_sherbimit ?? `Skill ${skill.id}`}
-                        </Text>
-
-                        {skill.service?.qmimi_baze != null && (
-                          <Text style={styles.skillOptionPrice}>
-                            €{skill.service.qmimi_baze}
-                          </Text>
-                        )}
-                      </View>
-
-                      <View
-                        style={[
-                          styles.checkbox,
-                          selected && styles.checkboxSelected,
-                        ]}
-                      >
-                        {selected && <Text style={styles.checkmark}>✓</Text>}
-                      </View>
-                    </TouchableOpacity>
+                    </View>
                   );
                 })}
-              </ScrollView>
 
-              <TouchableOpacity
-                style={styles.closeButton}
-                activeOpacity={0.8}
-                onPress={() => setShowSkillPicker(false)}
-              >
-                <Text style={styles.closeButtonText}>Done</Text>
-              </TouchableOpacity>
+              <Pressable style={styles.submitButton} onPress={setDates}>
+                <Text style={styles.submitButtonText}>
+                  Ruaj Disponueshmërinë
+                </Text>
+              </Pressable>
             </View>
-          </View>
-        </Modal>
-      </View>
+          )}
+
+          <Modal
+            visible={showSkillPicker}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowSkillPicker(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.skillModal}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Available Skills</Text>
+                  <Text style={styles.modalSubtitle}>
+                    Select skills to assign
+                  </Text>
+                </View>
+
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.scrollContent}
+                >
+                  {skills.map((skill: EmployeeService) => {
+                    const selected =
+                      editedData?.availableSkills?.includes(skill.id) ?? false;
+
+                    return (
+                      <TouchableOpacity
+                        key={skill.id}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.skillOption,
+                          selected && styles.skillOptionSelected,
+                        ]}
+                        onPress={() => toggleSkill(skill.id)}
+                      >
+                        {skill.service?.imagePath ? (
+                          <Image
+                            source={{ uri: skill.service.imagePath }}
+                            style={styles.serviceImage}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <View
+                            style={[
+                              styles.serviceImage,
+                              styles.imagePlaceholder,
+                            ]}
+                          >
+                            <Text style={styles.placeholderText}>No Image</Text>
+                          </View>
+                        )}
+
+                        <View style={styles.skillOptionInfo}>
+                          <Text style={styles.skillOptionText}>
+                            {skill.service?.emri_sherbimit ??
+                              `Skill ${skill.id}`}
+                          </Text>
+
+                          {skill.service?.qmimi_baze != null && (
+                            <Text style={styles.skillOptionPrice}>
+                              €{skill.service.qmimi_baze}
+                            </Text>
+                          )}
+                        </View>
+
+                        <View
+                          style={[
+                            styles.checkbox,
+                            selected && styles.checkboxSelected,
+                          ]}
+                        >
+                          {selected && <Text style={styles.checkmark}>✓</Text>}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  activeOpacity={0.8}
+                  onPress={() => setShowSkillPicker(false)}
+                >
+                  <Text style={styles.closeButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+        </View>
       </View>
     </ScrollView>
   );
@@ -1951,6 +1796,61 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     fontStyle: "italic",
   },
+
+  /* Skeleton + empty */
+  skeletonCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    padding: 16,
+  },
+  skeletonIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.creamDark,
+  },
+  skeletonLine: {
+    height: 13,
+    borderRadius: 6,
+    backgroundColor: COLORS.creamDark,
+  },
+  emptyState: {
+    alignItems: "center",
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    borderStyle: "dashed",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+  },
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.greenLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontFamily: SERIF,
+    fontSize: 18,
+    color: COLORS.black,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: COLORS.muted,
+    textAlign: "center",
+    marginTop: 6,
+    lineHeight: 19,
+  },
+
   cardGroupOuter: {
     marginBottom: 10,
   },
@@ -1992,7 +1892,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.creamDark,
   },
-  /* --- NEW TAB BAR STYLES --- */
+  /* --- TAB BAR STYLES --- */
   tabContainer: {
     flexDirection: "row",
     marginBottom: 16,
@@ -2004,6 +1904,8 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
     paddingVertical: 8,
     alignItems: "center",
     borderRadius: 7,
@@ -2158,6 +2060,136 @@ const styles = StyleSheet.create({
   formContainer: {
     marginTop: 16,
   },
+
+  /* Step headers */
+  stepHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 12,
+  },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.green,
+    borderWidth: 1,
+    borderColor: COLORS.gold,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepNumberText: { color: COLORS.cream, fontSize: 12, fontWeight: "700" },
+  stepTitle: { fontFamily: SERIF, fontSize: 18, color: COLORS.black },
+  stepSubtitle: { fontSize: 12, color: COLORS.muted, marginTop: 1 },
+  rangeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.greenLight,
+    borderWidth: 1,
+    borderColor: COLORS.infoBorder,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+  },
+  rangeChipText: { fontSize: 11, fontWeight: "700", color: COLORS.green },
+
+  /* Date range */
+  dateRangeCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    padding: 14,
+  },
+  dateCol: { flex: 1, alignItems: "flex-start" },
+  dateColLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+    color: COLORS.muted,
+    marginBottom: 6,
+  },
+  dateArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.greenLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 8,
+  },
+
+  /* Working day cards */
+  dayCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.control,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  dayCardActive: {
+    borderColor: COLORS.gold,
+    shadowColor: COLORS.green,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  dayHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+  },
+  dayBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.cream,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayBadgeActive: {
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.gold,
+  },
+  dayBadgeText: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    color: COLORS.muted,
+  },
+  dayBadgeTextActive: { color: COLORS.cream },
+  dayNameStrong: { color: COLORS.black, fontWeight: "700" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 },
+  timeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.greenLight,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  pauseChip: { backgroundColor: COLORS.cream },
+  timeChipText: { fontSize: 11, fontWeight: "600", color: COLORS.green },
+  groupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  hintText: { fontSize: 12, color: COLORS.muted, fontStyle: "italic" },
+
   cardGroup: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.control,
@@ -2212,7 +2244,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: COLORS.muted,
     textTransform: "uppercase",
-    marginBottom: 6,
   },
   timeRow: {
     flexDirection: "row",
@@ -2553,6 +2584,9 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 10,
   },
+  modalHeader: {
+    marginBottom: 12,
+  },
   modalHandle: {
     width: 36,
     height: 4,
@@ -2565,7 +2599,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: COLORS.black,
-    marginBottom: 16,
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: COLORS.muted,
   },
   scrollContent: {
     paddingBottom: 8,
