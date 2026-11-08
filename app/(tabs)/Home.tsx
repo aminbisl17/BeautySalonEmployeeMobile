@@ -203,12 +203,19 @@ export default function Home() {
       bounces={false}
     >
       {/* Header band */}
+
       <View style={[styles.headerZone, { paddingTop: insets.top + 32 }]}>
-        <View style={styles.badgePill}>
-          <Text style={styles.badgePillText}>Portali i Stafit</Text>
-        </View>
-        <Text style={styles.headerTitle}>Terminet</Text>
-        <Text style={styles.headerTitleSerif}>tuaja</Text>
+    *    <View style={styles.badgePill}>
+          <Text style={styles.badgePillText}>Ballina</Text>
+        </View> 
+
+        <View style={styles.avatarRing}>
+                <View style={styles.avatar}>
+                  <Ionicons name="home-outline" size={34} color={COLORS.goldLight} />
+                </View>
+              </View>
+          <Text style={styles.headerTitle}>Ballina</Text>
+       {/* <Text style={styles.headerTitleSerif}>tuaja</Text> */}
         <Text style={styles.headerSubtitle}>
           Shihni orarin, menaxhoni aftësitë dhe disponueshmërinë.
         </Text>
@@ -400,6 +407,21 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
 
+    avatarRing: {
+    padding: 5,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "rgba(182, 150, 99, 0.4)",
+    borderRadius: 43,
+  },
+  avatar: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: COLORS.green,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   /* Header band (.termini-header) */
   headerZone: {
     alignItems: "center",

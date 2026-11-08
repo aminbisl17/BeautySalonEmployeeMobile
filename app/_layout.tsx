@@ -99,7 +99,7 @@ export default function RootLayout() {
       <Stack.Screen
         name="AvailableDates"
         options={{
-          headerShown: false,
+          headerShown: true,
           title: "Disponueshmëria",
           headerBackTitle: "Kthehu",
         }}

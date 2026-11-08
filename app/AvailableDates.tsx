@@ -9,7 +9,6 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -24,7 +23,6 @@ import {
 } from "@/javascript/employees/AvailableDates";
 import { getSkills } from "@/javascript/employees/skillsAPI";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // --- Types & Interfaces ---
@@ -79,6 +77,7 @@ interface AvailabilityItem {
 interface DaySetup {
   id: number;
   name: string;
+  short: string;
   enabled: boolean;
   start_time: string;
   end_time: string;
@@ -86,26 +85,37 @@ interface DaySetup {
   pause_end: string;
 }
 
+type TimeField = "start_time" | "end_time" | "pause_start" | "pause_end";
+
 // --- Constants & Static Helpers ---
 const WEEK_DAYS = [
-  { id: 1, name: "E Hënë" },
-  { id: 2, name: "E Martë" },
-  { id: 3, name: "E Mërkurë" },
-  { id: 4, name: "E Enjte" },
-  { id: 5, name: "E Premte" },
-  { id: 6, name: "E Shtunë" },
-  { id: 7, name: "E Diel" },
+  { id: 1, name: "E Hënë", short: "Hën" },
+  { id: 2, name: "E Martë", short: "Mar" },
+  { id: 3, name: "E Mërkurë", short: "Mër" },
+  { id: 4, name: "E Enjte", short: "Enj" },
+  { id: 5, name: "E Premte", short: "Pre" },
+  { id: 6, name: "E Shtunë", short: "Sht" },
+  { id: 7, name: "E Diel", short: "Die" },
 ];
 
-const DAY_NAMES: Record<number, string> = {
-  1: "E Hënë",
-  2: "E Martë",
-  3: "E Mërkurë",
-  4: "E Enjte",
-  5: "E Premte",
-  6: "E Shtunë",
-  7: "E Diel",
-};
+const DAY_NAMES: Record<number, string> = Object.fromEntries(
+  WEEK_DAYS.map((d) => [d.id, d.name]),
+);
+
+const MONTHS_SHORT = [
+  "Jan",
+  "Shk",
+  "Mar",
+  "Pri",
+  "Maj",
+  "Qer",
+  "Kor",
+  "Gus",
+  "Sht",
+  "Tet",
+  "Nën",
+  "Dhj",
+];
 
 const formatTimeString = (date: Date) => date.toTimeString().slice(0, 5);
 
@@ -134,6 +144,27 @@ const parseDateOnlyString = (dateStr: string) => {
   return new Date(year, month - 1, day, 0, 0, 0, 0);
 };
 
+// Accepts "YYYY-MM-DD" or a full ISO string
+const parseAnyDate = (dateStr: string) => {
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    return parseDateOnlyString(dateStr.slice(0, 10));
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? new Date() : normalizeToMidnight(d);
+};
+
+const dayCount = (start: Date, end: Date) =>
+  Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+
+const getStatus = (item: AvailabilityItem) => {
+  const today = normalizeToMidnight(new Date());
+  const s = parseAnyDate(item.start_date);
+  const e = parseAnyDate(item.end_date);
+  if (today < s) return { label: "Në pritje", tone: "gold" as const };
+  if (today > e) return { label: "Skaduar", tone: "muted" as const };
+  return { label: "Aktive", tone: "green" as const };
+};
+
 const isDateOccupied = (
   date: Date,
   availabilityList: AvailabilityItem[],
@@ -152,7 +183,8 @@ const isDateOccupied = (
   });
 };
 
-// --- Skeleton loader ---
+// --- Small reusable pieces ---
+
 function SkeletonCard() {
   const pulse = useRef(new Animated.Value(0.45)).current;
 
@@ -177,17 +209,189 @@ function SkeletonCard() {
 
   return (
     <Animated.View style={[styles.skeletonCard, { opacity: pulse }]}>
-      <View style={styles.skeletonIcon} />
+      <View style={styles.skeletonDate} />
       <View style={{ flex: 1 }}>
-        <View style={[styles.skeletonLine, { width: "70%" }]} />
+        <View style={[styles.skeletonLine, { width: "55%" }]} />
         <View
           style={[
             styles.skeletonLine,
-            { width: "40%", height: 9, marginTop: 8 },
+            { width: "80%", height: 9, marginTop: 10 },
           ]}
         />
       </View>
     </Animated.View>
+  );
+}
+
+/** Mon–Sun strip. Filled = active day. */
+function WeekStrip({ active }: { active: number[] }) {
+  return (
+    <View style={styles.weekStrip}>
+      {WEEK_DAYS.map((d) => {
+        const on = active.includes(d.id);
+        return (
+          <View key={d.id} style={[styles.weekCell, on && styles.weekCellOn]}>
+            <Text style={[styles.weekCellText, on && styles.weekCellTextOn]}>
+              {d.short.slice(0, 1)}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SegmentTabs({
+  value,
+  onChange,
+  skillsCount,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  skillsCount: number;
+}) {
+  const tabs = [
+    { key: "days", label: "Orari", icon: "time-outline" as const },
+    {
+      key: "skills",
+      label: `Shërbimet (${skillsCount})`,
+      icon: "sparkles-outline" as const,
+    },
+  ];
+  return (
+    <View style={styles.segment}>
+      {tabs.map((t) => {
+        const on = value === t.key;
+        return (
+          <TouchableOpacity
+            key={t.key}
+            style={[styles.segmentBtn, on && styles.segmentBtnOn]}
+            onPress={() => onChange(t.key)}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name={t.icon}
+              size={14}
+              color={on ? COLORS.green : COLORS.muted}
+            />
+            <Text style={[styles.segmentText, on && styles.segmentTextOn]}>
+              {t.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function TimeCell({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  min?: string;
+  max?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View style={styles.timeCell}>
+      <Text style={styles.timeLabel}>{label}</Text>
+      <DateTimePicker
+        value={parseTimeString(value)}
+        mode="time"
+        display="compact"
+        is24Hour={true}
+        minimumDate={min ? parseTimeString(min) : undefined}
+        maximumDate={max ? parseTimeString(max) : undefined}
+        onChange={(_, date) => date && onChange(formatTimeString(date))}
+      />
+    </View>
+  );
+}
+
+/** Work hours + break, shared by edit mode and the new-availability form */
+function TimeBlock({
+  value,
+  onChange,
+}: {
+  value: {
+    start_time: string;
+    end_time: string;
+    pause_start?: string;
+    pause_end?: string;
+  };
+  onChange: (field: TimeField, v: string) => void;
+}) {
+  const ps = value.pause_start || "12:00";
+  const pe = value.pause_end || "13:00";
+  return (
+    <View>
+      <View style={styles.groupHeader}>
+        <Ionicons name="briefcase-outline" size={13} color={COLORS.green} />
+        <Text style={styles.groupLabel}>Puna</Text>
+      </View>
+      <View style={styles.timeRow}>
+        <TimeCell
+          label="Fillon"
+          value={value.start_time}
+          max={value.end_time}
+          onChange={(v) => onChange("start_time", v)}
+        />
+        <TimeCell
+          label="Përfundon"
+          value={value.end_time}
+          min={value.start_time}
+          onChange={(v) => onChange("end_time", v)}
+        />
+      </View>
+
+      <View style={[styles.groupHeader, { marginTop: 14 }]}>
+        <Ionicons name="cafe-outline" size={13} color={COLORS.green} />
+        <Text style={styles.groupLabel}>Pushimi</Text>
+      </View>
+      <View style={styles.timeRow}>
+        <TimeCell
+          label="Nga"
+          value={ps}
+          min={value.start_time}
+          max={pe}
+          onChange={(v) => onChange("pause_start", v)}
+        />
+        <TimeCell
+          label="Deri"
+          value={pe}
+          min={ps}
+          max={value.end_time}
+          onChange={(v) => onChange("pause_end", v)}
+        />
+      </View>
+    </View>
+  );
+}
+
+function ServiceThumb({ uri, size = 44 }: { uri?: string; size?: number }) {
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={{ width: size, height: size, borderRadius: 12 }}
+        contentFit="cover"
+      />
+    );
+  }
+  return (
+    <View
+      style={[
+        styles.thumbPlaceholder,
+        { width: size, height: size, borderRadius: 12 },
+      ]}
+    >
+      <Ionicons name="construct-outline" size={size * 0.42} color={COLORS.green} />
+    </View>
   );
 }
 
@@ -197,7 +401,6 @@ export default function Availability() {
   const [availability, setAvailability] = useState<AvailabilityItem[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(true);
   const [expanded, setExpanded] = useState<number | null>(null);
-  const router = useRouter();
   const [expandedSavedCard, setExpandedSavedCard] = useState<number | null>(
     null,
   );
@@ -221,24 +424,10 @@ export default function Availability() {
   });
 
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
-
-  // Toggle skill selection on click
-  const toggleSkillSelection = (id: number) => {
-    setSelectedSkillIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
-  };
-
   const [availableDays, setAvailableDays] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("days"); // 'days' or 'skills'
   const [skills, setSkills] = useState<EmployeeService[]>([]);
-  const [showSkillsForm, setSkillsForm] = useState(false);
   const [showSkillPicker, setShowSkillPicker] = useState(false);
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadAvailability();
-    setRefreshing(false);
-  }, []);
 
   const [days, setDays] = useState<DaySetup[]>(
     WEEK_DAYS.map((day) => ({
@@ -250,6 +439,18 @@ export default function Availability() {
       pause_end: "13:00",
     })),
   );
+
+  const toggleSkillSelection = (id: number) => {
+    setSelectedSkillIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAvailability();
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     calculateAvailableDays(startDate, endDate);
@@ -296,7 +497,7 @@ export default function Availability() {
       start_date: formatDateString(startDate),
       end_date: formatDateString(endDate),
       availabilityDetails: days
-        .filter((day) => day.enabled)
+        .filter((day) => day.enabled && availableDays.includes(day.id))
         .map((day) => ({
           day_of_week: day.id,
           start_time: day.start_time,
@@ -306,8 +507,6 @@ export default function Availability() {
         })),
       availableSkills: selectedSkillIds,
     };
-
-    console.log("Submitting Payload:", JSON.stringify(data, null, 2));
 
     try {
       const message = await setAvailableDates(data);
@@ -324,7 +523,6 @@ export default function Availability() {
     setEditedData({
       start_date: item.start_date,
       end_date: item.end_date,
-
       availabilityDetails: item.availabilityDetails.map((d) => ({
         day_of_week: d.day_of_week,
         start_time: d.start_time,
@@ -332,9 +530,17 @@ export default function Availability() {
         pause_start: d.pause_start || "12:00:00",
         pause_end: d.pause_end || "13:00:00",
       })),
-
       availableSkills: item.availableSkills || [],
       sherbimetDisplay: item.sherbimetDisplay || [],
+    });
+  };
+
+  const updateEditedDetail = (index: number, field: TimeField, v: string) => {
+    setEditedData((prev) => {
+      if (!prev) return prev;
+      const details = [...prev.availabilityDetails];
+      details[index] = { ...details[index], [field]: v };
+      return { ...prev, availabilityDetails: details };
     });
   };
 
@@ -350,7 +556,6 @@ export default function Availability() {
           pause_start: d.pause_start,
           pause_end: d.pause_end,
         })),
-
         availableSkills: editedData.availableSkills ?? [],
       };
 
@@ -359,10 +564,7 @@ export default function Availability() {
       setAvailability((prevList) =>
         prevList.map((item) =>
           item.id_availability === editingAvailability
-            ? {
-                ...item,
-                ...editedData,
-              }
+            ? { ...item, ...editedData }
             : item,
         ),
       );
@@ -401,50 +603,40 @@ export default function Availability() {
     );
   };
 
-  const formatDateAlbanian = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-
-    if (isNaN(date.getTime())) return dateString;
-
-    return date.toLocaleDateString("sq-AL", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  };
-
-  // 1. START DATE ONCHANGE
-  const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    // Handle Android back button/dismissal
-    if (event?.type === "dismissed" || !selectedDate) return;
-
-    const cleanStartDate = normalizeToMidnight(selectedDate);
-    const targetEndDate = cleanStartDate > endDate ? cleanStartDate : endDate;
-
-    let hasConflict = false;
-    const current = new Date(cleanStartDate.getTime());
-
-    while (current <= targetEndDate) {
-      if (isDateOccupied(current, availability)) {
-        hasConflict = true;
-        break;
-      }
+  const hasConflict = (from: Date, to: Date) => {
+    const current = new Date(from.getTime());
+    while (current <= to) {
+      if (isDateOccupied(current, availability)) return true;
       current.setDate(current.getDate() + 1);
     }
+    return false;
+  };
 
-    if (hasConflict) {
-      Alert.alert(
-        "Lodhje e padisponueshme",
-        "Lodhja e përzgjedhur përmban data që janë tashmë të zëna.",
-      );
-      return;
-    }
+  const showConflictAlert = () =>
+    Alert.alert(
+      "Lodhje e padisponueshme",
+      "Lodhja e përzgjedhur përmban data që janë tashmë të zëna.",
+    );
 
-    setStartDate(cleanStartDate);
-    if (cleanStartDate > endDate) {
-      setEndDate(cleanStartDate);
-    }
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    if (event?.type === "dismissed" || !selectedDate) return;
+
+    const cleanStart = normalizeToMidnight(selectedDate);
+    const targetEnd = cleanStart > endDate ? cleanStart : endDate;
+
+    if (hasConflict(cleanStart, targetEnd)) return showConflictAlert();
+
+    setStartDate(cleanStart);
+    if (cleanStart > endDate) setEndDate(cleanStart);
+  };
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    if (event?.type === "dismissed" || !selectedDate) return;
+
+    const cleanEnd = normalizeToMidnight(selectedDate);
+    if (hasConflict(startDate, cleanEnd)) return showConflictAlert();
+
+    setEndDate(cleanEnd);
   };
 
   const toggleSkill = (skillId: number) => {
@@ -453,17 +645,10 @@ export default function Availability() {
 
       const currentSkills = prev.availableSkills ?? [];
       const isSelected = currentSkills.includes(skillId);
-
-      const selectedSkill = skills.find(
-        (skill: EmployeeService) => skill.id === skillId,
-      );
-
-      if (!selectedSkill) {
-        return prev;
-      }
+      const selectedSkill = skills.find((s) => s.id === skillId);
+      if (!selectedSkill) return prev;
 
       if (isSelected) {
-        // Deselect
         return {
           ...prev,
           availableSkills: currentSkills.filter((id) => id !== skillId),
@@ -473,7 +658,6 @@ export default function Availability() {
         };
       }
 
-      // Select
       const serviceDetail: ServiceDetail = {
         ...selectedSkill.service,
         avaSkillId: skillId,
@@ -487,33 +671,470 @@ export default function Availability() {
     });
   };
 
-  // 2. END DATE ONCHANGE
-  const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    if (event?.type === "dismissed" || !selectedDate) return;
+  const enabledDays = days.filter(
+    (d) => d.enabled && availableDays.includes(d.id),
+  );
 
-    const cleanEndDate = normalizeToMidnight(selectedDate);
+  // ---------- Render helpers: current availability ----------
 
-    let hasConflict = false;
-    const current = new Date(startDate.getTime());
-
-    while (current <= cleanEndDate) {
-      if (isDateOccupied(current, availability)) {
-        hasConflict = true;
-        break;
-      }
-      current.setDate(current.getDate() + 1);
-    }
-
-    if (hasConflict) {
-      Alert.alert(
-        "Lodhje e padisponueshme",
-        "Lodhja e përzgjedhur përmban data që janë tashmë të zëna.",
-      );
-      return;
-    }
-
-    setEndDate(cleanEndDate);
+  const renderDateBlock = (dateStr: string) => {
+    const d = parseAnyDate(dateStr);
+    return (
+      <View style={styles.dateBlock}>
+        <Text style={styles.dateBlockDay}>{d.getDate()}</Text>
+        <Text style={styles.dateBlockMonth}>{MONTHS_SHORT[d.getMonth()]}</Text>
+      </View>
+    );
   };
+
+  const renderReadOnly = (item: AvailabilityItem) => (
+    <View style={styles.cardBody}>
+      <SegmentTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        skillsCount={item.sherbimetDisplay?.length || 0}
+      />
+
+      {activeTab === "days" && (
+        <View>
+          {item.availabilityDetails.map((d, index) => {
+            const hasBreak = d.pause_start && d.pause_end;
+            return (
+              <View
+                key={index}
+                style={[styles.scheduleRow, index === 0 && styles.noTopLine]}
+              >
+                <View style={styles.scheduleDay}>
+                  <Text style={styles.scheduleDayText}>
+                    {WEEK_DAYS[d.day_of_week - 1]?.short}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scheduleTime}>
+                    {d.start_time.slice(0, 5)} – {d.end_time.slice(0, 5)}
+                  </Text>
+                  {hasBreak && (
+                    <View style={styles.breakRow}>
+                      <Ionicons
+                        name="cafe-outline"
+                        size={11}
+                        color={COLORS.muted}
+                      />
+                      <Text style={styles.breakText}>
+                        {d.pause_start!.slice(0, 5)} –{" "}
+                        {d.pause_end!.slice(0, 5)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {activeTab === "skills" && (
+        <View style={{ gap: 8 }}>
+          {item.sherbimetDisplay && item.sherbimetDisplay.length > 0 ? (
+            item.sherbimetDisplay.map((s) => (
+              <View key={s.ID} style={styles.serviceRow}>
+                <ServiceThumb uri={s.imagePath} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.serviceRowName} numberOfLines={1}>
+                    {s.emri_sherbimit}
+                  </Text>
+                  <Text style={styles.serviceRowMeta}>{s.kohezgjatja} min</Text>
+                </View>
+                <View style={styles.priceTag}>
+                  <Text style={styles.priceTagText}>{s.qmimi_baze} €</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyInline}>Nuk ka shërbime të caktuara.</Text>
+          )}
+        </View>
+      )}
+
+      <View style={styles.cardActions}>
+        <Pressable
+          style={[styles.actionBtn, styles.actionBtnEdit]}
+          onPress={() => startEditing(item)}
+        >
+          <Ionicons name="create-outline" size={16} color={COLORS.green} />
+          <Text style={[styles.actionBtnText, { color: COLORS.green }]}>
+            Ndrysho
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.actionBtn, styles.actionBtnDelete]}
+          onPress={() => deleteAvailability(item.id_availability)}
+        >
+          <Ionicons name="trash-outline" size={16} color={COLORS.red} />
+          <Text style={[styles.actionBtnText, { color: COLORS.red }]}>Fshi</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const renderEditing = () => (
+    <View style={styles.cardBody}>
+      <SegmentTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        skillsCount={editedData?.sherbimetDisplay?.length || 0}
+      />
+
+      {activeTab === "days" &&
+        editedData?.availabilityDetails.map((d, index) => (
+          <View key={index} style={styles.editDayCard}>
+            <View style={styles.editDayTitle}>
+              <View style={styles.scheduleDay}>
+                <Text style={styles.scheduleDayText}>
+                  {WEEK_DAYS[d.day_of_week - 1]?.short}
+                </Text>
+              </View>
+              <Text style={styles.dayNameStrong}>{DAY_NAMES[d.day_of_week]}</Text>
+            </View>
+            <TimeBlock
+              value={d}
+              onChange={(field, v) => updateEditedDetail(index, field, v)}
+            />
+          </View>
+        ))}
+
+      {activeTab === "skills" && (
+        <View style={{ gap: 8 }}>
+          <TouchableOpacity
+            style={styles.addSkillButton}
+            onPress={() => setShowSkillPicker(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={18} color={COLORS.green} />
+            <Text style={styles.addSkillButtonText}>Shto shërbim</Text>
+          </TouchableOpacity>
+
+          {editedData?.sherbimetDisplay?.length === 0 ? (
+            <Text style={styles.emptyInline}>Asnjë shërbim i zgjedhur</Text>
+          ) : (
+            editedData?.sherbimetDisplay?.map((skill) => (
+              <View key={skill.avaSkillId} style={styles.serviceRow}>
+                <ServiceThumb uri={skill.imagePath} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.serviceRowName} numberOfLines={1}>
+                    {skill.emri_sherbimit}
+                  </Text>
+                  <Text style={styles.serviceRowMeta}>
+                    {skill.qmimi_baze ?? 0} €
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.removeBtn}
+                  onPress={() => toggleSkill(skill.avaSkillId)}
+                >
+                  <Ionicons name="close" size={16} color={COLORS.red} />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+
+      <View style={styles.cardActions}>
+        <Pressable
+          style={[styles.actionBtn, styles.actionBtnGhost]}
+          onPress={() => {
+            setEditingAvailability(null);
+            setEditedData(null);
+          }}
+        >
+          <Text style={[styles.actionBtnText, { color: COLORS.muted }]}>
+            Anulo
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.actionBtn, styles.actionBtnPrimary]}
+          onPress={saveAvailability}
+        >
+          <Text style={[styles.actionBtnText, { color: COLORS.surface }]}>
+            Ruaj Përditësimet
+          </Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+
+  const renderAvailabilityCard = (item: AvailabilityItem) => {
+    const open = expandedSavedCard === item.id_availability;
+    const isEditing = editingAvailability === item.id_availability;
+    const status = getStatus(item);
+    const start = parseAnyDate(item.start_date);
+    const end = parseAnyDate(item.end_date);
+    const activeDays = item.availabilityDetails.map((d) => d.day_of_week);
+
+    return (
+      <View
+        key={item.id_availability}
+        style={[styles.card, open && styles.cardOpen]}
+      >
+        <View
+          style={[
+            styles.cardAccent,
+            status.tone === "green" && { backgroundColor: COLORS.green },
+            status.tone === "gold" && { backgroundColor: COLORS.gold },
+            status.tone === "muted" && { backgroundColor: COLORS.creamDark },
+          ]}
+        />
+
+        <Pressable
+          style={styles.cardHeader}
+          onPress={() =>
+            setExpandedSavedCard(open ? null : item.id_availability)
+          }
+        >
+          <View style={styles.dateRail}>
+            {renderDateBlock(item.start_date)}
+            <View style={styles.railLine} />
+            {renderDateBlock(item.end_date)}
+          </View>
+
+          <View style={{ flex: 1, gap: 8 }}>
+            <View style={styles.metaTop}>
+              <View
+                style={[
+                  styles.statusPill,
+                  status.tone === "green" && styles.statusGreen,
+                  status.tone === "gold" && styles.statusGold,
+                  status.tone === "muted" && styles.statusMuted,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusText,
+                    status.tone === "green" && { color: COLORS.green },
+                    status.tone === "muted" && { color: COLORS.muted },
+                  ]}
+                >
+                  {status.label}
+                </Text>
+              </View>
+              <Text style={styles.durationText}>
+                {dayCount(start, end)} ditë
+              </Text>
+            </View>
+
+            <WeekStrip active={activeDays} />
+
+            <Text style={styles.servicesCount}>
+              {item.sherbimetDisplay?.length || 0} shërbime
+            </Text>
+          </View>
+
+          <Ionicons
+            name={open ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={COLORS.light}
+          />
+        </Pressable>
+
+        {open && (isEditing ? renderEditing() : renderReadOnly(item))}
+      </View>
+    );
+  };
+
+  // ---------- Render helpers: new availability ----------
+
+  const renderDateTile = (
+    label: string,
+    date: Date,
+    onChange: (e: any, d?: Date) => void,
+    min?: Date,
+  ) => (
+    <View style={styles.dateTile}>
+      <Text style={styles.dateTileLabel}>{label}</Text>
+      <Text style={styles.dateTileDay}>{date.getDate()}</Text>
+      <Text style={styles.dateTileMonth}>
+        {MONTHS_SHORT[date.getMonth()]} {date.getFullYear()}
+      </Text>
+      <View style={styles.dateTilePicker}>
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="compact"
+          minimumDate={min}
+          onChange={onChange}
+        />
+      </View>
+    </View>
+  );
+
+  const renderNewForm = () => (
+    <View style={styles.formContainer}>
+      {/* PERIOD */}
+      <View style={styles.panel}>
+        <View style={styles.panelHead}>
+          <Ionicons name="calendar-outline" size={18} color={COLORS.green} />
+          <Text style={styles.panelTitle}>Periudha</Text>
+          <View style={styles.rangeChip}>
+            <Text style={styles.rangeChipText}>
+              {dayCount(startDate, endDate)} ditë
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.dateTiles}>
+          {renderDateTile("Fillon", startDate, handleStartDateChange)}
+          <View style={styles.tileArrow}>
+            <Ionicons name="arrow-forward" size={16} color={COLORS.green} />
+          </View>
+          {renderDateTile("Përfundon", endDate, handleEndDateChange, startDate)}
+        </View>
+      </View>
+
+      {/* WORKING DAYS */}
+      <View style={styles.panel}>
+        <View style={styles.panelHead}>
+          <Ionicons name="time-outline" size={18} color={COLORS.green} />
+          <Text style={styles.panelTitle}>Ditët e punës</Text>
+          <View style={styles.rangeChip}>
+            <Text style={styles.rangeChipText}>{enabledDays.length} aktive</Text>
+          </View>
+        </View>
+
+        <View style={styles.dayPicker}>
+          {days.map((day) => {
+            const inRange = availableDays.includes(day.id);
+            return (
+              <Pressable
+                key={day.id}
+                disabled={!inRange}
+                onPress={() => {
+                  updateDay(day.id, "enabled", !day.enabled);
+                  if (!day.enabled) setExpanded(day.id);
+                  else if (expanded === day.id) setExpanded(null);
+                }}
+                style={[
+                  styles.dayCircle,
+                  day.enabled && inRange && styles.dayCircleOn,
+                  !inRange && styles.dayCircleOff,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.dayCircleText,
+                    day.enabled && inRange && styles.dayCircleTextOn,
+                  ]}
+                >
+                  {day.short}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {enabledDays.length === 0 ? (
+          <Text style={styles.hintText}>
+            Prekni ditët e mësipërme për t'i aktivizuar dhe caktuar oraret.
+          </Text>
+        ) : (
+          enabledDays.map((day) => {
+            const isOpen = expanded === day.id;
+            return (
+              <View key={day.id} style={styles.dayRow}>
+                <Pressable
+                  style={styles.dayRowHead}
+                  onPress={() => setExpanded(isOpen ? null : day.id)}
+                >
+                  <Text style={styles.dayRowName}>{day.name}</Text>
+                  <View style={styles.dayRowTimes}>
+                    <Text style={styles.dayRowTime}>
+                      {day.start_time} – {day.end_time}
+                    </Text>
+                    <Text style={styles.dayRowBreak}>
+                      pushim {day.pause_start}–{day.pause_end}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={isOpen ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color={COLORS.light}
+                  />
+                </Pressable>
+
+                {isOpen && (
+                  <View style={styles.dayRowBody}>
+                    <TimeBlock
+                      value={day}
+                      onChange={(field, v) => updateDay(day.id, field, v)}
+                    />
+                  </View>
+                )}
+              </View>
+            );
+          })
+        )}
+      </View>
+
+      {/* SERVICES */}
+      <View style={styles.panel}>
+        <View style={styles.panelHead}>
+          <Ionicons name="sparkles-outline" size={18} color={COLORS.green} />
+          <Text style={styles.panelTitle}>Shërbimet</Text>
+          <View style={styles.rangeChip}>
+            <Text style={styles.rangeChipText}>
+              {selectedSkillIds.length} zgjedhur
+            </Text>
+          </View>
+        </View>
+
+        {skills.length === 0 ? (
+          <Text style={styles.hintText}>Nuk keni shërbime të regjistruara.</Text>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chipScroll}
+          >
+            {skills.map((item) => {
+              const selected = selectedSkillIds.includes(item.id);
+              return (
+                <Pressable
+                  key={item.id}
+                  onPress={() => toggleSkillSelection(item.id)}
+                  style={[styles.skillChip, selected && styles.skillChipOn]}
+                >
+                  <ServiceThumb uri={item.service?.imagePath} size={38} />
+                  <View style={{ maxWidth: 110 }}>
+                    <Text
+                      style={[
+                        styles.skillChipName,
+                        selected && { color: COLORS.green },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {item.service?.emri_sherbimit}
+                    </Text>
+                    <Text style={styles.skillChipMeta}>
+                      {item.service?.kohezgjatja} min
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={selected ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={selected ? COLORS.green : COLORS.light}
+                  />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+
+      <Pressable style={styles.submitButton} onPress={setDates}>
+        <Text style={styles.submitButtonText}>Ruaj Disponueshmërinë</Text>
+      </Pressable>
+    </View>
+  );
 
   return (
     <ScrollView
@@ -529,17 +1150,8 @@ export default function Availability() {
         />
       }
     >
-      {/* Profile-matched editorial header */}
+      {/* Header */}
       <View style={[styles.headerZone, { paddingTop: insets.top + 24 }]}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.push("/Home")}
-          accessibilityRole="button"
-          accessibilityLabel="Kthehu në faqen kryesore"
-        >
-          <Ionicons name="arrow-back" size={21} color={COLORS.goldLight} />
-        </Pressable>
-
         <View style={styles.badgePill}>
           <Text style={styles.badgePillText}>Orari Profesional</Text>
         </View>
@@ -572,592 +1184,9 @@ export default function Availability() {
               <SkeletonCard />
             </View>
           ) : (
-            availability.map((item) => {
-              const isSavedCardExpanded =
-                expandedSavedCard === item.id_availability;
-              const isEditing = editingAvailability === item.id_availability;
-
-              return (
-                <View key={item.id_availability} style={styles.cardGroupOuter}>
-                  <View
-                    style={[
-                      styles.currentCard,
-                      isSavedCardExpanded && styles.cardActiveShadow,
-                    ]}
-                  >
-                    <Pressable
-                      style={styles.currentHeaderRow}
-                      onPress={() =>
-                        setExpandedSavedCard(
-                          isSavedCardExpanded ? null : item.id_availability,
-                        )
-                      }
-                    >
-                      <View style={styles.headerTitleContainer}>
-                        <Ionicons
-                          name="calendar-outline"
-                          size={18}
-                          color={COLORS.green}
-                          style={{ marginRight: 8 }}
-                        />
-                        <Text style={styles.currentDateRange}>
-                          {formatDateAlbanian(item.start_date)} →{" "}
-                          {formatDateAlbanian(item.end_date)}
-                        </Text>
-                      </View>
-
-                      <Ionicons
-                        name={
-                          isSavedCardExpanded ? "chevron-up" : "chevron-down"
-                        }
-                        size={20}
-                        color={COLORS.light}
-                      />
-                    </Pressable>
-
-                    {isSavedCardExpanded &&
-                      (isEditing ? (
-                        <View style={styles.editContainer}>
-                          {/* TAB SWITCHER HEADER */}
-                          <View style={styles.tabContainer}>
-                            <TouchableOpacity
-                              style={[
-                                styles.tabButton,
-                                activeTab === "days" && styles.activeTabButton,
-                              ]}
-                              onPress={() => setActiveTab("days")}
-                            >
-                              <Text
-                                style={[
-                                  styles.tabButtonText,
-                                  activeTab === "days" && styles.activeTabText,
-                                ]}
-                              >
-                                Days of Week
-                              </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={[
-                                styles.tabButton,
-                                activeTab === "skills" &&
-                                  styles.activeTabButton,
-                              ]}
-                              onPress={() => setActiveTab("skills")}
-                            >
-                              <Text
-                                style={[
-                                  styles.tabButtonText,
-                                  activeTab === "skills" &&
-                                    styles.activeTabText,
-                                ]}
-                              >
-                                Skills
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-
-                          {/* AVAILABILITY DETAILS (DAYS) */}
-                          {activeTab === "days" && (
-                            <View style={styles.tabContent}>
-                              {editedData?.availabilityDetails.map(
-                                (d, index) => {
-                                  const workStart = parseTimeString(
-                                    d.start_time,
-                                  );
-                                  const workEnd = parseTimeString(d.end_time);
-                                  const pauseStart = parseTimeString(
-                                    d.pause_start || "12:00:00",
-                                  );
-                                  const pauseEnd = parseTimeString(
-                                    d.pause_end || "13:00:00",
-                                  );
-
-                                  return (
-                                    <View
-                                      key={index}
-                                      style={styles.editDayCard}
-                                    >
-                                      <View style={styles.dayTitleRow}>
-                                        <View style={styles.detailBadge} />
-                                        <Text style={styles.dayNameActive}>
-                                          {DAY_NAMES[d.day_of_week]}
-                                        </Text>
-                                      </View>
-
-                                      {/* Work Times */}
-                                      <View style={styles.timeRow}>
-                                        <View style={{ flex: 1 }}>
-                                          <Text style={styles.inputLabel}>
-                                            Ora e Fillimit
-                                          </Text>
-                                          <DateTimePicker
-                                            value={workStart}
-                                            mode="time"
-                                            display="compact"
-                                            is24Hour={true}
-                                            maximumDate={workEnd}
-                                            onChange={(e, date) => {
-                                              if (!date || !editedData) return;
-                                              const details = [
-                                                ...editedData.availabilityDetails,
-                                              ];
-                                              details[index] = {
-                                                ...details[index],
-                                                start_time:
-                                                  formatTimeString(date),
-                                              };
-                                              setEditedData({
-                                                ...editedData,
-                                                availabilityDetails: details,
-                                              });
-                                            }}
-                                          />
-                                        </View>
-
-                                        <View style={{ flex: 1 }}>
-                                          <Text style={styles.inputLabel}>
-                                            Ora e Përfundimit
-                                          </Text>
-                                          <DateTimePicker
-                                            value={workEnd}
-                                            mode="time"
-                                            display="compact"
-                                            is24Hour={true}
-                                            minimumDate={workStart}
-                                            onChange={(e, date) => {
-                                              if (!date || !editedData) return;
-                                              const details = [
-                                                ...editedData.availabilityDetails,
-                                              ];
-                                              details[index] = {
-                                                ...details[index],
-                                                end_time:
-                                                  formatTimeString(date),
-                                              };
-                                              setEditedData({
-                                                ...editedData,
-                                                availabilityDetails: details,
-                                              });
-                                            }}
-                                          />
-                                        </View>
-                                      </View>
-
-                                      {/* Pause / Break Times */}
-                                      <View
-                                        style={[
-                                          styles.timeRow,
-                                          { marginTop: 10 },
-                                        ]}
-                                      >
-                                        <View style={{ flex: 1 }}>
-                                          <Text style={styles.inputLabel}>
-                                            Fillimi i Pushimit
-                                          </Text>
-                                          <DateTimePicker
-                                            value={pauseStart}
-                                            mode="time"
-                                            display="compact"
-                                            is24Hour={true}
-                                            minimumDate={workStart}
-                                            maximumDate={pauseEnd}
-                                            onChange={(e, date) => {
-                                              if (!date || !editedData) return;
-                                              const details = [
-                                                ...editedData.availabilityDetails,
-                                              ];
-                                              details[index] = {
-                                                ...details[index],
-                                                pause_start:
-                                                  formatTimeString(date),
-                                              };
-                                              setEditedData({
-                                                ...editedData,
-                                                availabilityDetails: details,
-                                              });
-                                            }}
-                                          />
-                                        </View>
-
-                                        <View style={{ flex: 1 }}>
-                                          <Text style={styles.inputLabel}>
-                                            Përfundimi i Pushimit
-                                          </Text>
-                                          <DateTimePicker
-                                            value={pauseEnd}
-                                            mode="time"
-                                            display="compact"
-                                            is24Hour={true}
-                                            minimumDate={pauseStart}
-                                            maximumDate={workEnd}
-                                            onChange={(e, date) => {
-                                              if (!date || !editedData) return;
-                                              const details = [
-                                                ...editedData.availabilityDetails,
-                                              ];
-                                              details[index] = {
-                                                ...details[index],
-                                                pause_end:
-                                                  formatTimeString(date),
-                                              };
-                                              setEditedData({
-                                                ...editedData,
-                                                availabilityDetails: details,
-                                              });
-                                            }}
-                                          />
-                                        </View>
-                                      </View>
-                                    </View>
-                                  );
-                                },
-                              )}
-                            </View>
-                          )}
-
-                          {/* AVAILABLE SKILLS */}
-                          {activeTab === "skills" && (
-                            <View style={styles.skillsSection}>
-                              <View style={styles.skillsHeader}>
-                                <Text style={styles.sectionTitle}>
-                                  Available Skills
-                                </Text>
-
-                                <TouchableOpacity
-                                  style={styles.addSkillButton}
-                                  onPress={() => setShowSkillPicker(true)}
-                                >
-                                  <Text style={styles.addSkillButtonText}>
-                                    + Add Skill
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-
-                              {editedData?.sherbimetDisplay?.length === 0 ? (
-                                <Text style={styles.noSkillsText}>
-                                  No skills selected
-                                </Text>
-                              ) : (
-                                editedData?.sherbimetDisplay?.map((skill) => (
-                                  <View
-                                    key={skill.avaSkillId}
-                                    style={styles.skillRow}
-                                  >
-                                    {skill.imagePath ? (
-                                      <Image
-                                        source={{ uri: skill.imagePath }}
-                                        style={styles.serviceImage}
-                                        contentFit="cover"
-                                      />
-                                    ) : (
-                                      <View
-                                        style={styles.skillImagePlaceholder}
-                                      >
-                                        <Text style={styles.placeholderText}>
-                                          No Image
-                                        </Text>
-                                      </View>
-                                    )}
-
-                                    <View style={styles.skillInfo}>
-                                      <Text style={styles.skillName}>
-                                        {skill.emri_sherbimit}
-                                      </Text>
-
-                                      <Text style={styles.skillPrice}>
-                                        €{skill.qmimi_baze ?? 0}
-                                      </Text>
-                                    </View>
-
-                                    <TouchableOpacity
-                                      onPress={() => {
-                                        if (!editedData) return;
-
-                                        setEditedData({
-                                          ...editedData,
-                                          availableSkills:
-                                            editedData.availableSkills.filter(
-                                              (id) => id !== skill.avaSkillId,
-                                            ),
-                                          sherbimetDisplay:
-                                            editedData.sherbimetDisplay.filter(
-                                              (service) =>
-                                                service.avaSkillId !==
-                                                skill.avaSkillId,
-                                            ),
-                                        });
-                                      }}
-                                      style={styles.removeSkillButton}
-                                    >
-                                      <Text style={styles.removeSkillText}>
-                                        Remove
-                                      </Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                ))
-                              )}
-                            </View>
-                          )}
-
-                          {/* SAVE / CANCEL BUTTONS */}
-                          <View style={styles.buttonRow}>
-                            <Pressable
-                              style={styles.cancelButton}
-                              onPress={() => {
-                                setEditingAvailability(null);
-                                setEditedData(null);
-                              }}
-                            >
-                              <Text style={styles.cancelButtonText}>Anulo</Text>
-                            </Pressable>
-
-                            <Pressable
-                              style={styles.saveButton}
-                              onPress={saveAvailability}
-                            >
-                              <Text style={styles.saveButtonText}>
-                                Ruaj Përditësimet
-                              </Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      ) : (
-                        <View style={styles.cardGroupOuter}>
-                          <View style={styles.currentCard}>
-                            {/* DISPLAY / READ-ONLY MODE */}
-                            <View style={{ marginTop: 12 }}>
-                              {/* READ-ONLY TAB SWITCHER */}
-                              <View style={styles.tabContainer}>
-                                <TouchableOpacity
-                                  style={[
-                                    styles.tabButton,
-                                    activeTab === "days" &&
-                                      styles.activeTabButton,
-                                  ]}
-                                  onPress={() => setActiveTab("days")}
-                                >
-                                  <Ionicons
-                                    name="calendar-outline"
-                                    size={15}
-                                    color={
-                                      activeTab === "days"
-                                        ? COLORS.green
-                                        : COLORS.muted
-                                    }
-                                    style={{ marginRight: 6 }}
-                                  />
-                                  <Text
-                                    style={[
-                                      styles.tabButtonText,
-                                      activeTab === "days" &&
-                                        styles.activeTabText,
-                                    ]}
-                                  >
-                                    Days of Week
-                                  </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                  style={[
-                                    styles.tabButton,
-                                    activeTab === "skills" &&
-                                      styles.activeTabButton,
-                                  ]}
-                                  onPress={() => setActiveTab("skills")}
-                                >
-                                  <Ionicons
-                                    name="sparkles-outline"
-                                    size={15}
-                                    color={
-                                      activeTab === "skills"
-                                        ? COLORS.green
-                                        : COLORS.muted
-                                    }
-                                    style={{ marginRight: 6 }}
-                                  />
-                                  <Text
-                                    style={[
-                                      styles.tabButtonText,
-                                      activeTab === "skills" &&
-                                        styles.activeTabText,
-                                    ]}
-                                  >
-                                    Skills ({item.sherbimetDisplay?.length || 0}
-                                    )
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-
-                              {/* TAB 1: DISPLAY DAYS */}
-                              {activeTab === "days" && (
-                                <View style={styles.tabContent}>
-                                  {item.availabilityDetails.map((d, index) => (
-                                    <View
-                                      key={index}
-                                      style={styles.currentDetailItem}
-                                    >
-                                      <View style={styles.detailBadge} />
-
-                                      <View style={{ flex: 1 }}>
-                                        <Text style={styles.dayNameActive}>
-                                          {DAY_NAMES[d.day_of_week]}
-                                        </Text>
-
-                                        <Text style={styles.detailTimeText}>
-                                          {d.start_time.slice(0, 5)} -{" "}
-                                          {d.end_time.slice(0, 5)}
-                                        </Text>
-
-                                        {d.pause_start && d.pause_end && (
-                                          <Text style={styles.breakText}>
-                                            Pushimi: {d.pause_start.slice(0, 5)}{" "}
-                                            - {d.pause_end.slice(0, 5)}
-                                          </Text>
-                                        )}
-                                      </View>
-                                    </View>
-                                  ))}
-                                </View>
-                              )}
-
-                              {/* TAB 2: DISPLAY SKILLS */}
-                              {activeTab === "skills" && (
-                                <View style={styles.tabContent}>
-                                  {item?.sherbimetDisplay &&
-                                  item.sherbimetDisplay.length > 0 ? (
-                                    <View style={styles.servicesList}>
-                                      {item.sherbimetDisplay.map((sherbi) => (
-                                        <View
-                                          key={sherbi.ID}
-                                          style={styles.serviceCard}
-                                        >
-                                          {sherbi.imagePath ? (
-                                            <Image
-                                              source={{ uri: sherbi.imagePath }}
-                                              style={styles.serviceImage}
-                                              contentFit="cover"
-                                              onLoad={(event) => {
-                                                console.log(
-                                                  "IMAGE LOADED:",
-                                                  event.source,
-                                                );
-                                              }}
-                                              onError={(event) => {
-                                                console.log(
-                                                  "IMAGE URL:",
-                                                  sherbi.imagePath,
-                                                );
-                                                console.log(
-                                                  "IMAGE ERROR:",
-                                                  event.error,
-                                                );
-                                              }}
-                                            />
-                                          ) : (
-                                            <View
-                                              style={
-                                                styles.serviceImagePlaceholder
-                                              }
-                                            >
-                                              <Ionicons
-                                                name="construct-outline"
-                                                size={20}
-                                                color={COLORS.green}
-                                              />
-                                            </View>
-                                          )}
-
-                                          <View style={styles.serviceInfo}>
-                                            <Text
-                                              style={styles.serviceName}
-                                              numberOfLines={1}
-                                            >
-                                              {sherbi.emri_sherbimit}
-                                            </Text>
-
-                                            <View style={styles.metaRow}>
-                                              <View style={styles.metaBadge}>
-                                                <Ionicons
-                                                  name="time-outline"
-                                                  size={12}
-                                                  color={COLORS.muted}
-                                                />
-                                                <Text style={styles.metaText}>
-                                                  {sherbi.kohezgjatja} min
-                                                </Text>
-                                              </View>
-
-                                              <View
-                                                style={[
-                                                  styles.metaBadge,
-                                                  styles.priceBadge,
-                                                ]}
-                                              >
-                                                <Ionicons
-                                                  name="pricetag-outline"
-                                                  size={12}
-                                                  color={COLORS.green}
-                                                />
-                                                <Text style={styles.priceText}>
-                                                  {sherbi.qmimi_baze} €
-                                                </Text>
-                                              </View>
-                                            </View>
-                                          </View>
-                                        </View>
-                                      ))}
-                                    </View>
-                                  ) : (
-                                    <Text style={styles.noSkillsText}>
-                                      Nuk ka shërbime të caktuara.
-                                    </Text>
-                                  )}
-                                </View>
-                              )}
-
-                              {/* CARD READ-ONLY ACTION BUTTONS */}
-                              <View style={styles.actionButtons}>
-                                <Pressable
-                                  style={styles.editButton}
-                                  onPress={() => startEditing(item)}
-                                >
-                                  <Ionicons
-                                    name="create-outline"
-                                    size={16}
-                                    color={COLORS.green}
-                                    style={{ marginRight: 4 }}
-                                  />
-                                  <Text style={styles.editButtonText}>
-                                    Ndrysho
-                                  </Text>
-                                </Pressable>
-
-                                <Pressable
-                                  style={styles.deleteButton}
-                                  onPress={() =>
-                                    deleteAvailability(item.id_availability)
-                                  }
-                                >
-                                  <Ionicons
-                                    name="trash-outline"
-                                    size={16}
-                                    color={COLORS.red}
-                                    style={{ marginRight: 4 }}
-                                  />
-                                  <Text style={styles.deleteButtonText}>
-                                    Fshi
-                                  </Text>
-                                </Pressable>
-                              </View>
-                            </View>
-                          </View>
-                        </View>
-                      ))}
-                  </View>
-                </View>
-              );
-            })
+            <View style={{ gap: 12 }}>
+              {availability.map(renderAvailabilityCard)}
+            </View>
           )}
 
           {!loadingAvailability && availability.length === 0 && (
@@ -1177,552 +1206,114 @@ export default function Availability() {
           )}
         </View>
 
-        {/* EXPANDABLE TRIGGER FOR CONFIGURATION FORM */}
+        {/* NEW AVAILABILITY */}
         <View style={styles.section}>
           <Pressable
-            style={[
-              styles.setupToggleFormButton,
-              styles.skillsSelectButton,
-              showSetupForm && styles.setupToggleFormButtonActive,
-            ]}
+            style={[styles.newTrigger, showSetupForm && styles.newTriggerOpen]}
             onPress={() => setShowSetupForm(!showSetupForm)}
           >
-            <View>
-              <Text style={styles.setupToggleTitle}>
+            <View style={styles.newTriggerIcon}>
+              <Ionicons
+                name={showSetupForm ? "remove" : "add"}
+                size={22}
+                color={COLORS.goldLight}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.newTriggerTitle}>
                 Vendos Disponueshmëri të Re
               </Text>
-              <Text style={styles.setupToggleSubtitle}>
+              <Text style={styles.newTriggerSubtitle}>
                 Përcaktoni datat, ditët aktive dhe oraret
               </Text>
             </View>
-            <Ionicons
-              name={showSetupForm ? "chevron-up" : "chevron-down"}
-              size={22}
-              color={COLORS.green}
-            />
           </Pressable>
 
-          {showSetupForm && (
-            <View style={styles.formContainer}>
-              {/* STEP 1: DATE RANGE */}
-              <View style={styles.stepHeader}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>1</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.stepTitle}>Periudha e Datave</Text>
-                  <Text style={styles.stepSubtitle}>
-                    Nga data e fillimit deri në përfundim
-                  </Text>
-                </View>
-                <View style={styles.rangeChip}>
-                  <Ionicons name="time-outline" size={12} color={COLORS.green} />
-                  <Text style={styles.rangeChipText}>
-                    {Math.max(
-                      1,
-                      Math.round(
-                        (endDate.getTime() - startDate.getTime()) / 86400000,
-                      ) + 1,
-                    )}{" "}
-                    ditë
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.dateRangeCard}>
-                <View style={styles.dateCol}>
-                  <Text style={styles.dateColLabel}>Fillon</Text>
-                  <DateTimePicker
-                    value={
-                      startDate instanceof Date && !isNaN(startDate.getTime())
-                        ? startDate
-                        : new Date()
-                    }
-                    mode="date"
-                    display="compact"
-                    onChange={handleStartDateChange}
-                  />
-                </View>
-
-                <View style={styles.dateArrow}>
-                  <Ionicons
-                    name="arrow-forward"
-                    size={16}
-                    color={COLORS.green}
-                  />
-                </View>
-
-                <View style={[styles.dateCol, { alignItems: "flex-end" }]}>
-                  <Text style={styles.dateColLabel}>Përfundon</Text>
-                  <DateTimePicker
-                    value={
-                      endDate instanceof Date && !isNaN(endDate.getTime())
-                        ? endDate
-                        : new Date()
-                    }
-                    mode="date"
-                    display="compact"
-                    minimumDate={
-                      startDate instanceof Date && !isNaN(startDate.getTime())
-                        ? startDate
-                        : new Date()
-                    }
-                    onChange={handleEndDateChange}
-                  />
-                </View>
-              </View>
-
-              <Pressable
-                style={[
-                  styles.setupToggleFormButton,
-                  styles.skillsSelectButton,
-                  showSkillsForm && styles.setupToggleFormButtonActive,
-                ]}
-                onPress={() => setSkillsForm(!showSkillsForm)}
-              >
-                <View style={styles.headerLeft}>
-                  <Text style={styles.setupToggleTitle}>Zgjedh Shërbimet</Text>
-                  <Text style={styles.setupToggleSubtitle}>
-                    Zgjidhni shërbimet apo aftësitë e aplikueshme
-                  </Text>
-                </View>
-                <Ionicons
-                  name={showSkillsForm ? "chevron-up" : "chevron-down"}
-                  size={22}
-                  color={COLORS.green}
-                />
-              </Pressable>
-
-              {showSkillsForm && (
-                <View style={styles.skillsListContainer}>
-                  {skills.map((item: EmployeeService) => {
-                    const { service } = item;
-                    const isSelected = selectedSkillIds.includes(item.id);
-
-                    return (
-                      <Pressable
-                        key={item.id}
-                        style={[
-                          styles.serviceCard,
-                          isSelected && styles.serviceCardSelected,
-                        ]}
-                        onPress={() => toggleSkillSelection(item.id)}
-                      >
-                        <View style={styles.serviceMainRow}>
-                          {/* CHECKBOX INDICATOR */}
-                          <Ionicons
-                            name={isSelected ? "checkbox" : "square-outline"}
-                            size={22}
-                            color={isSelected ? COLORS.green : COLORS.light}
-                            style={{ alignSelf: "center", marginRight: 4 }}
-                          />
-
-                          {/* SERVICE IMAGE */}
-                          {service?.imagePath ? (
-                            <Image
-                              source={{ uri: service.imagePath }}
-                              style={styles.serviceImage}
-                              contentFit="cover"
-                            />
-                          ) : (
-                            <View
-                              style={[
-                                styles.serviceImage,
-                                styles.imagePlaceholder,
-                              ]}
-                            >
-                              <Ionicons
-                                name="image-outline"
-                                size={24}
-                                color={COLORS.light}
-                              />
-                            </View>
-                          )}
-
-                          {/* SERVICE DETAILS */}
-                          <View style={styles.serviceContent}>
-                            <Text style={styles.serviceTitle}>
-                              {service.emri_sherbimit}
-                            </Text>
-                            <Text style={styles.metaText}>
-                              {service.kohezgjatja} min
-                            </Text>
-                          </View>
-                        </View>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-
-              {/* STEP 2: WORKING DAYS */}
-              <View style={[styles.stepHeader, { marginTop: 28 }]}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>2</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.stepTitle}>Ditët e Punës</Text>
-                  <Text style={styles.stepSubtitle}>
-                    Aktivizoni ditët dhe caktoni oraret
-                  </Text>
-                </View>
-                <View style={styles.rangeChip}>
-                  <Text style={styles.rangeChipText}>
-                    {
-                      days.filter(
-                        (d) => d.enabled && availableDays.includes(d.id),
-                      ).length
-                    }{" "}
-                    aktive
-                  </Text>
-                </View>
-              </View>
-
-              {days
-                .filter((day) => availableDays.includes(day.id))
-                .map((day) => {
-                  const isExpanded = expanded === day.id;
-
-                  const workStart = parseTimeString(day.start_time);
-                  const workEnd = parseTimeString(day.end_time);
-                  const pauseStart = parseTimeString(
-                    day.pause_start || "12:00:00",
-                  );
-                  const pauseEnd = parseTimeString(day.pause_end || "13:00:00");
-
-                  return (
-                    <View
-                      key={day.id}
-                      style={[styles.dayCard, day.enabled && styles.dayCardActive]}
-                    >
-                      <Pressable
-                        style={styles.dayHeader}
-                        onPress={() => setExpanded(isExpanded ? null : day.id)}
-                      >
-                        <View
-                          style={[
-                            styles.dayBadge,
-                            day.enabled && styles.dayBadgeActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.dayBadgeText,
-                              day.enabled && styles.dayBadgeTextActive,
-                            ]}
-                          >
-                            {day.name.replace("E ", "").slice(0, 3)}
-                          </Text>
-                        </View>
-
-                        <View style={styles.headerLeft}>
-                          <Text
-                            style={[
-                              styles.dayName,
-                              day.enabled && styles.dayNameStrong,
-                            ]}
-                          >
-                            {day.name}
-                          </Text>
-
-                          {day.enabled ? (
-                            <View style={styles.chipRow}>
-                              <View style={styles.timeChip}>
-                                <Ionicons
-                                  name="time-outline"
-                                  size={11}
-                                  color={COLORS.green}
-                                />
-                                <Text style={styles.timeChipText}>
-                                  {day.start_time} – {day.end_time}
-                                </Text>
-                              </View>
-                              <View style={[styles.timeChip, styles.pauseChip]}>
-                                <Ionicons
-                                  name="cafe-outline"
-                                  size={11}
-                                  color={COLORS.muted}
-                                />
-                                <Text
-                                  style={[
-                                    styles.timeChipText,
-                                    { color: COLORS.muted },
-                                  ]}
-                                >
-                                  {day.pause_start} – {day.pause_end}
-                                </Text>
-                              </View>
-                            </View>
-                          ) : (
-                            <Text style={styles.statusSubtitle}>
-                              Mbyllur / E Padisponueshme
-                            </Text>
-                          )}
-                        </View>
-
-                        <View style={styles.headerRight}>
-                          <Switch
-                            trackColor={{
-                              false: COLORS.creamDark,
-                              true: COLORS.gold,
-                            }}
-                            thumbColor={
-                              day.enabled ? COLORS.green : COLORS.light
-                            }
-                            value={day.enabled}
-                            onValueChange={(v) =>
-                              updateDay(day.id, "enabled", v)
-                            }
-                          />
-                          <Ionicons
-                            name={isExpanded ? "chevron-up" : "chevron-down"}
-                            size={18}
-                            color={COLORS.light}
-                          />
-                        </View>
-                      </Pressable>
-
-                      {isExpanded && day.enabled && (
-                        <View style={styles.dayContent}>
-                          <View style={styles.groupHeader}>
-                            <Ionicons
-                              name="briefcase-outline"
-                              size={14}
-                              color={COLORS.green}
-                            />
-                            <Text style={styles.groupLabel}>Oraret e Punës</Text>
-                          </View>
-                          <View style={styles.timeRow}>
-                            <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>Fillon</Text>
-                              <DateTimePicker
-                                value={workStart}
-                                mode="time"
-                                display="compact"
-                                is24Hour={true}
-                                maximumDate={workEnd}
-                                onChange={(e, date) =>
-                                  date &&
-                                  updateDay(
-                                    day.id,
-                                    "start_time",
-                                    formatTimeString(date),
-                                  )
-                                }
-                              />
-                            </View>
-                            <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>Përfundon</Text>
-                              <DateTimePicker
-                                value={workEnd}
-                                mode="time"
-                                display="compact"
-                                is24Hour={true}
-                                minimumDate={workStart}
-                                onChange={(e, date) =>
-                                  date &&
-                                  updateDay(
-                                    day.id,
-                                    "end_time",
-                                    formatTimeString(date),
-                                  )
-                                }
-                              />
-                            </View>
-                          </View>
-
-                          <View style={[styles.groupHeader, { marginTop: 18 }]}>
-                            <Ionicons
-                              name="cafe-outline"
-                              size={14}
-                              color={COLORS.green}
-                            />
-                            <Text style={styles.groupLabel}>
-                              Kohëzgjatja e Pushimit
-                            </Text>
-                          </View>
-                          <View style={styles.timeRow}>
-                            <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>Nga</Text>
-                              <DateTimePicker
-                                value={pauseStart}
-                                mode="time"
-                                display="compact"
-                                is24Hour={true}
-                                minimumDate={workStart}
-                                maximumDate={pauseEnd}
-                                onChange={(e, date) =>
-                                  date &&
-                                  updateDay(
-                                    day.id,
-                                    "pause_start",
-                                    formatTimeString(date),
-                                  )
-                                }
-                              />
-                            </View>
-                            <View style={styles.timeCell}>
-                              <Text style={styles.timeLabel}>Deri</Text>
-                              <DateTimePicker
-                                value={pauseEnd}
-                                mode="time"
-                                display="compact"
-                                is24Hour={true}
-                                minimumDate={pauseStart}
-                                maximumDate={workEnd}
-                                onChange={(e, date) =>
-                                  date &&
-                                  updateDay(
-                                    day.id,
-                                    "pause_end",
-                                    formatTimeString(date),
-                                  )
-                                }
-                              />
-                            </View>
-                          </View>
-                        </View>
-                      )}
-
-                      {isExpanded && !day.enabled && (
-                        <View style={styles.dayContent}>
-                          <Text style={styles.hintText}>
-                            Aktivizoni këtë ditë për të caktuar oraret.
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })}
-
-              <Pressable style={styles.submitButton} onPress={setDates}>
-                <Text style={styles.submitButtonText}>
-                  Ruaj Disponueshmërinë
-                </Text>
-              </Pressable>
-            </View>
-          )}
-
-          <Modal
-            visible={showSkillPicker}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowSkillPicker(false)}
-          >
-            <View style={styles.modalOverlay}>
-              <View style={styles.skillModal}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Available Skills</Text>
-                  <Text style={styles.modalSubtitle}>
-                    Select skills to assign
-                  </Text>
-                </View>
-
-                <ScrollView
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.scrollContent}
-                >
-                  {skills.map((skill: EmployeeService) => {
-                    const selected =
-                      editedData?.availableSkills?.includes(skill.id) ?? false;
-
-                    return (
-                      <TouchableOpacity
-                        key={skill.id}
-                        activeOpacity={0.7}
-                        style={[
-                          styles.skillOption,
-                          selected && styles.skillOptionSelected,
-                        ]}
-                        onPress={() => toggleSkill(skill.id)}
-                      >
-                        {skill.service?.imagePath ? (
-                          <Image
-                            source={{ uri: skill.service.imagePath }}
-                            style={styles.serviceImage}
-                            contentFit="cover"
-                          />
-                        ) : (
-                          <View
-                            style={[
-                              styles.serviceImage,
-                              styles.imagePlaceholder,
-                            ]}
-                          >
-                            <Text style={styles.placeholderText}>No Image</Text>
-                          </View>
-                        )}
-
-                        <View style={styles.skillOptionInfo}>
-                          <Text style={styles.skillOptionText}>
-                            {skill.service?.emri_sherbimit ??
-                              `Skill ${skill.id}`}
-                          </Text>
-
-                          {skill.service?.qmimi_baze != null && (
-                            <Text style={styles.skillOptionPrice}>
-                              €{skill.service.qmimi_baze}
-                            </Text>
-                          )}
-                        </View>
-
-                        <View
-                          style={[
-                            styles.checkbox,
-                            selected && styles.checkboxSelected,
-                          ]}
-                        >
-                          {selected && <Text style={styles.checkmark}>✓</Text>}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-
-                <TouchableOpacity
-                  style={styles.closeButton}
-                  activeOpacity={0.8}
-                  onPress={() => setShowSkillPicker(false)}
-                >
-                  <Text style={styles.closeButtonText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+          {showSetupForm && renderNewForm()}
         </View>
       </View>
+
+      {/* SKILL PICKER MODAL (edit mode) */}
+      <Modal
+        visible={showSkillPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSkillPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.skillModal}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Shërbimet</Text>
+              <Text style={styles.modalSubtitle}>
+                Zgjidhni shërbimet për t'i caktuar
+              </Text>
+            </View>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 8 }}
+            >
+              {skills.map((skill) => {
+                const selected =
+                  editedData?.availableSkills?.includes(skill.id) ?? false;
+
+                return (
+                  <TouchableOpacity
+                    key={skill.id}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.skillOption,
+                      selected && styles.skillOptionSelected,
+                    ]}
+                    onPress={() => toggleSkill(skill.id)}
+                  >
+                    <ServiceThumb uri={skill.service?.imagePath} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.serviceRowName} numberOfLines={1}>
+                        {skill.service?.emri_sherbimit ?? `Skill ${skill.id}`}
+                      </Text>
+                      {skill.service?.qmimi_baze != null && (
+                        <Text style={styles.serviceRowMeta}>
+                          {skill.service.qmimi_baze} €
+                        </Text>
+                      )}
+                    </View>
+                    <Ionicons
+                      name={selected ? "checkmark-circle" : "ellipse-outline"}
+                      size={24}
+                      color={selected ? COLORS.green : COLORS.light}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              activeOpacity={0.8}
+              onPress={() => setShowSkillPicker(false)}
+            >
+              <Text style={styles.closeButtonText}>Gati</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.cream,
-  },
-  contentContainer: {
-    paddingBottom: 48,
-  },
+  container: { flex: 1, backgroundColor: COLORS.cream },
+  contentContainer: { paddingBottom: 48 },
+
+  /* Header (unchanged) */
   headerZone: {
     position: "relative",
     alignItems: "center",
     backgroundColor: COLORS.black,
     paddingHorizontal: 22,
     paddingBottom: 72,
-  },
-  backButton: {
-    position: "absolute",
-    left: 18,
-    top: 14,
-    zIndex: 2,
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: RADIUS.pill,
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderWidth: 1,
-    borderColor: "rgba(182,150,99,0.32)",
   },
   badgePill: {
     marginBottom: 18,
@@ -1771,47 +1362,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
     letterSpacing: -0.2,
   },
-  body: {
-    marginHorizontal: 12,
-    marginTop: -34,
-  },
-  section: {
-    marginBottom: 20,
-  },
+  body: { marginHorizontal: 12, marginTop: -34 },
+  section: { marginBottom: 20 },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.muted,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.cream,
     marginBottom: 12,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  innerSectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.text,
-    marginBottom: 8,
-  },
-  loading: {
-    color: COLORS.muted,
-    fontStyle: "italic",
+    letterSpacing: 1.2,
   },
 
   /* Skeleton + empty */
   skeletonCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 14,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.creamDark,
     padding: 16,
   },
-  skeletonIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  skeletonDate: {
+    width: 56,
+    height: 72,
+    borderRadius: 14,
     backgroundColor: COLORS.creamDark,
   },
   skeletonLine: {
@@ -1822,7 +1398,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.creamDark,
     borderStyle: "dashed",
@@ -1838,11 +1414,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 12,
   },
-  emptyTitle: {
-    fontFamily: SERIF,
-    fontSize: 18,
-    color: COLORS.black,
-  },
+  emptyTitle: { fontFamily: SERIF, fontSize: 18, color: COLORS.black },
   emptySubtitle: {
     fontSize: 13,
     color: COLORS.muted,
@@ -1850,67 +1422,128 @@ const styles = StyleSheet.create({
     marginTop: 6,
     lineHeight: 19,
   },
-
-  cardGroupOuter: {
-    marginBottom: 10,
+  emptyInline: {
+    fontSize: 13,
+    color: COLORS.light,
+    fontStyle: "italic",
+    paddingVertical: 8,
   },
-  currentCard: {
+
+  /* ---------- Current availability card ---------- */
+  card: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
-    padding: 14,
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: COLORS.creamDark,
+    overflow: "hidden",
   },
-  cardActiveShadow: {
+  cardOpen: {
     borderColor: COLORS.goldSoft,
     shadowColor: COLORS.green,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  currentHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitleContainer: {
+  cardAccent: { height: 3, backgroundColor: COLORS.creamDark },
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 14,
+    padding: 14,
   },
-  currentDateRange: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.text,
+  dateRail: {
+    alignItems: "center",
+    backgroundColor: COLORS.black,
+    borderRadius: 14,
+    paddingVertical: 8,
+    width: 56,
   },
-  skillsSelectButton: {
-    marginTop: 16,
+  dateBlock: { alignItems: "center" },
+  dateBlockDay: {
+    fontFamily: SERIF,
+    fontSize: 22,
+    lineHeight: 24,
+    color: COLORS.cream,
   },
-  editContainer: {
-    marginTop: 12,
-    paddingTop: 12,
+  dateBlockMonth: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: COLORS.goldSoft,
+    letterSpacing: 0.6,
+  },
+  railLine: {
+    width: 1,
+    height: 12,
+    backgroundColor: "rgba(182,150,99,0.5)",
+    marginVertical: 5,
+  },
+  metaTop: { flexDirection: "row", alignItems: "center", gap: 8 },
+  statusPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+  },
+  statusGreen: {
+    backgroundColor: COLORS.greenLight,
+    borderColor: COLORS.infoBorder,
+  },
+  statusGold: {
+    backgroundColor: COLORS.cream,
+    borderColor: COLORS.goldSoft,
+  },
+  statusMuted: {
+    backgroundColor: COLORS.cream,
+    borderColor: COLORS.creamDark,
+  },
+  statusText: { fontSize: 11, fontWeight: "700", color: COLORS.gold },
+  durationText: { fontSize: 12, color: COLORS.muted, fontWeight: "600" },
+  servicesCount: { fontSize: 12, color: COLORS.muted },
+
+  weekStrip: { flexDirection: "row", gap: 4 },
+  weekCell: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    backgroundColor: COLORS.cream,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weekCellOn: { backgroundColor: COLORS.green, borderColor: COLORS.green },
+  weekCellText: { fontSize: 10, fontWeight: "700", color: COLORS.light },
+  weekCellTextOn: { color: COLORS.cream },
+
+  cardBody: {
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+    paddingTop: 4,
     borderTopWidth: 1,
     borderTopColor: COLORS.creamDark,
+    backgroundColor: COLORS.surface,
   },
-  /* --- TAB BAR STYLES --- */
-  tabContainer: {
+
+  /* Segmented tabs */
+  segment: {
     flexDirection: "row",
-    marginBottom: 16,
     backgroundColor: COLORS.greenLight,
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 4,
-    borderWidth: 1,
-    borderColor: COLORS.greenLight,
+    marginTop: 12,
+    marginBottom: 12,
   },
-  tabButton: {
+  segmentBtn: {
     flex: 1,
     flexDirection: "row",
-    justifyContent: "center",
-    paddingVertical: 8,
     alignItems: "center",
-    borderRadius: 7,
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 9,
   },
-  activeTabButton: {
+  segmentBtnOn: {
     backgroundColor: COLORS.surface,
     shadowColor: COLORS.green,
     shadowOffset: { width: 0, height: 2 },
@@ -1918,653 +1551,324 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  tabButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.muted,
-  },
-  activeTabText: {
-    color: COLORS.green,
-    fontWeight: "700",
-  },
-  tabContent: {
-    width: "100%",
-  },
-  /* --------------------------- */
-  editDayCard: {
-    backgroundColor: COLORS.cream,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
-  },
-  dayTitleRow: {
+  segmentText: { fontSize: 13, fontWeight: "600", color: COLORS.muted },
+  segmentTextOn: { color: COLORS.green, fontWeight: "700" },
+
+  /* Schedule rows (read-only) */
+  scheduleRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
-  },
-  inputLabel: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginBottom: 4,
-  },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: 8,
-    marginTop: 12,
-  },
-  cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    backgroundColor: COLORS.creamDark,
-  },
-  cancelButtonText: {
-    color: COLORS.muted,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  saveButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-    backgroundColor: COLORS.green,
-  },
-  saveButtonText: {
-    color: COLORS.surface,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  currentDetailItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginTop: 10,
-    paddingTop: 8,
+    gap: 12,
+    paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: COLORS.cream,
   },
-  detailBadge: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORS.green,
-    marginTop: 6,
-    marginRight: 8,
-  },
-  dayNameActive: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.black,
-  },
-  detailTimeText: {
-    fontSize: 13,
-    color: COLORS.text,
-    marginTop: 2,
-  },
-  breakText: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 1,
-  },
-  actionButtons: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 12,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.creamDark,
-    gap: 12,
-  },
-  editButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  editButtonText: {
-    color: COLORS.green,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  deleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  deleteButtonText: {
-    color: COLORS.red,
-    fontWeight: "600",
-    fontSize: 13,
-  },
-  setupToggleFormButton: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: COLORS.surface,
-    padding: 16,
-    borderRadius: RADIUS.control,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  setupToggleFormButtonActive: {
-    borderColor: COLORS.gold,
+  noTopLine: { borderTopWidth: 0 },
+  scheduleDay: {
+    width: 40,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: COLORS.greenLight,
-  },
-  setupToggleTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.black,
-  },
-  setupToggleSubtitle: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 2,
-  },
-  formContainer: {
-    marginTop: 16,
-  },
-
-  /* Step headers */
-  stepHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
-  stepNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.green,
-    borderWidth: 1,
-    borderColor: COLORS.gold,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepNumberText: { color: COLORS.cream, fontSize: 12, fontWeight: "700" },
-  stepTitle: { fontFamily: SERIF, fontSize: 18, color: COLORS.black },
-  stepSubtitle: { fontSize: 12, color: COLORS.muted, marginTop: 1 },
-  rangeChip: {
+  scheduleDayText: { fontSize: 12, fontWeight: "800", color: COLORS.green },
+  scheduleTime: { fontSize: 15, fontWeight: "600", color: COLORS.black },
+  breakRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
+  breakText: { fontSize: 12, color: COLORS.muted },
+
+  /* Services rows */
+  serviceRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 12,
+    backgroundColor: COLORS.cream,
+    borderRadius: 14,
+    padding: 10,
+  },
+  serviceRowName: { fontSize: 14, fontWeight: "600", color: COLORS.black },
+  serviceRowMeta: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
+  priceTag: {
     backgroundColor: COLORS.greenLight,
     borderWidth: 1,
     borderColor: COLORS.infoBorder,
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderRadius: RADIUS.pill,
   },
-  rangeChipText: { fontSize: 11, fontWeight: "700", color: COLORS.green },
+  priceTagText: { fontSize: 12, fontWeight: "700", color: COLORS.green },
+  thumbPlaceholder: {
+    backgroundColor: COLORS.greenLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
-  /* Date range */
-  dateRangeCard: {
+  /* Card actions */
+  cardActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 14,
+  },
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: RADIUS.pill,
     borderWidth: 1,
+  },
+  actionBtnEdit: {
+    backgroundColor: COLORS.greenLight,
+    borderColor: COLORS.infoBorder,
+  },
+  actionBtnDelete: {
+    backgroundColor: COLORS.dangerBg,
+    borderColor: COLORS.dangerBorder,
+  },
+  actionBtnGhost: {
+    backgroundColor: COLORS.cream,
     borderColor: COLORS.creamDark,
-    padding: 14,
   },
-  dateCol: { flex: 1, alignItems: "flex-start" },
-  dateColLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    color: COLORS.muted,
-    marginBottom: 6,
+  actionBtnPrimary: {
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.green,
   },
-  dateArrow: {
+  actionBtnText: { fontSize: 13, fontWeight: "700" },
+
+  /* Edit mode */
+  editDayCard: {
+    backgroundColor: COLORS.cream,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+  },
+  editDayTitle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  dayNameStrong: { fontSize: 15, fontWeight: "700", color: COLORS.black },
+  addSkillButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: COLORS.gold,
+    backgroundColor: COLORS.greenLight,
+  },
+  addSkillButtonText: { color: COLORS.green, fontSize: 13, fontWeight: "700" },
+  removeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.greenLight,
+    backgroundColor: COLORS.dangerBg,
+    borderWidth: 1,
+    borderColor: COLORS.dangerBorder,
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: 8,
   },
 
-  /* Working day cards */
-  dayCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-    marginBottom: 10,
-    overflow: "hidden",
-  },
-  dayCardActive: {
-    borderColor: COLORS.gold,
-    shadowColor: COLORS.green,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  dayHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 12,
-  },
-  dayBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: COLORS.cream,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dayBadgeActive: {
-    backgroundColor: COLORS.green,
-    borderColor: COLORS.gold,
-  },
-  dayBadgeText: {
-    fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    color: COLORS.muted,
-  },
-  dayBadgeTextActive: { color: COLORS.cream },
-  dayNameStrong: { color: COLORS.black, fontWeight: "700" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 },
-  timeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: COLORS.greenLight,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  pauseChip: { backgroundColor: COLORS.cream },
-  timeChipText: { fontSize: 11, fontWeight: "600", color: COLORS.green },
+  /* Shared time inputs */
   groupHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginBottom: 8,
   },
-  hintText: { fontSize: 12, color: COLORS.muted, fontStyle: "italic" },
-
-  cardGroup: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-    overflow: "hidden",
-  },
-  cardActiveBorder: {
-    borderColor: COLORS.gold,
-  },
-  cellRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-  },
-  cellLabel: {
-    fontSize: 14,
-    color: COLORS.text,
-    fontWeight: "500",
-  },
-  separator: {
-    height: 1,
-    backgroundColor: COLORS.creamDark,
-  },
-  headerLeft: {
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  dayName: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: COLORS.muted,
-  },
-  statusSubtitle: {
-    fontSize: 12,
-    color: COLORS.light,
-    marginTop: 2,
-  },
-  dayContent: {
-    padding: 12,
-    backgroundColor: COLORS.cream,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.creamDark,
-  },
   groupLabel: {
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "700",
     color: COLORS.muted,
-    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
-  timeRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
+  timeRow: { flexDirection: "row", gap: 10 },
   timeCell: {
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: COLORS.surface,
-    padding: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  timeLabel: {
-    fontSize: 12,
-    color: COLORS.muted,
-  },
-  submitButton: {
-    backgroundColor: COLORS.green,
-    paddingVertical: 15,
-    borderRadius: RADIUS.pill,
-    alignItems: "center",
-    marginTop: 20,
-  },
-  submitButtonText: {
-    color: COLORS.surface,
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  skillsListContainer: {
-    marginTop: 16,
-    gap: 12,
-  },
-  serviceCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  serviceCardSelected: {
-    borderColor: COLORS.green,
-    borderWidth: 2,
-    backgroundColor: COLORS.greenLight,
-  },
-  serviceMainRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  serviceImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: COLORS.creamDark,
-  },
-  imagePlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  serviceContent: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  serviceTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: COLORS.black,
-    textTransform: "capitalize",
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginTop: 3,
-  },
-  metaText: {
-    fontSize: 12,
-    color: COLORS.muted,
-    fontWeight: "500",
-  },
-  serviceDescription: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 4,
-  },
-  priceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 6,
-  },
-  priceText: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: COLORS.green,
-  },
-  originalPriceText: {
-    fontSize: 12,
-    color: COLORS.light,
-    textDecorationLine: "line-through",
-  },
-  discountBadge: {
-    backgroundColor: COLORS.dangerBg,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  discountBadgeText: {
-    color: COLORS.red,
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  attributesSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.creamDark,
-  },
-  attributesSectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  attributeCard: {
-    backgroundColor: COLORS.cream,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  attributeMainInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  attributeLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  attributeName: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  attributeDuration: {
-    fontSize: 11,
-    color: COLORS.muted,
-  },
-  attributePriceContainer: {
-    alignItems: "flex-end",
-  },
-  attributePrice: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.black,
-  },
-  attributeOriginalPrice: {
-    fontSize: 10,
-    color: COLORS.light,
-    textDecorationLine: "line-through",
-  },
-  attributeDescription: {
-    fontSize: 11,
-    color: COLORS.muted,
-    marginTop: 4,
-  },
-  skillsContainer: {
-    marginTop: 16,
-    paddingTop: 14,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.creamDark,
-  },
-  skillsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  skillsTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.text,
-  },
-  countBadge: {
-    backgroundColor: COLORS.greenLight,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: RADIUS.control,
-    marginLeft: "auto",
-  },
-  countBadgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.green,
-  },
-  servicesList: {
-    gap: 10,
-  },
-  serviceImagePlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: COLORS.greenLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  serviceInfo: {
-    flex: 1,
-    marginLeft: 10,
-    justifyContent: "center",
-  },
-  serviceName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.black,
-    marginBottom: 4,
-  },
-  metaBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  priceBadge: {
-    borderColor: COLORS.infoBorder,
-    backgroundColor: COLORS.greenLight,
-  },
-  skillsSection: {
-    marginTop: 4,
-  },
-  addSkillButton: {
-    backgroundColor: COLORS.greenLight,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.goldSoft,
-  },
-  addSkillButtonText: {
-    color: COLORS.green,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  noSkillsText: {
-    fontSize: 13,
-    color: COLORS.light,
-    fontStyle: "italic",
-    paddingVertical: 8,
-  },
-  skillRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.cream,
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  /* --- ADDED SKILL ITEM STYLES --- */
-  skillImagePlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: COLORS.greenLight,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  skillInfo: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
-    justifyContent: "center",
-  },
-  skillName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  skillPrice: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.green,
-    marginTop: 2,
-  },
-  /* ------------------------------- */
-  removeSkillButton: {
-    paddingHorizontal: 9,
     paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: COLORS.dangerBg,
+    paddingLeft: 12,
+    paddingRight: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.dangerBorder,
+    borderColor: COLORS.creamDark,
   },
-  removeSkillText: {
-    color: COLORS.red,
+  timeLabel: { fontSize: 12, color: COLORS.muted, fontWeight: "600" },
+
+  /* ---------- New availability ---------- */
+  newTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: COLORS.surface,
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: COLORS.gold,
+  },
+  newTriggerOpen: {
+    backgroundColor: COLORS.greenLight,
+    borderStyle: "solid",
+  },
+  newTriggerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.green,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  newTriggerTitle: { fontFamily: SERIF, fontSize: 18, color: COLORS.black },
+  newTriggerSubtitle: { fontSize: 12, color: COLORS.muted, marginTop: 2 },
+
+  formContainer: { marginTop: 14, gap: 14 },
+  panel: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    padding: 14,
+  },
+  panelHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 14,
+  },
+  panelTitle: { flex: 1, fontFamily: SERIF, fontSize: 18, color: COLORS.black },
+  rangeChip: {
+    backgroundColor: COLORS.greenLight,
+    borderWidth: 1,
+    borderColor: COLORS.infoBorder,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: RADIUS.pill,
+  },
+  rangeChipText: { fontSize: 11, fontWeight: "700", color: COLORS.green },
+
+  /* Date tiles */
+  dateTiles: { flexDirection: "row", alignItems: "center" },
+  dateTile: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: COLORS.cream,
+    borderRadius: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  dateTileLabel: {
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: COLORS.muted,
+    letterSpacing: 0.6,
+  },
+  dateTileDay: {
+    fontFamily: SERIF,
+    fontSize: 42,
+    lineHeight: 48,
+    color: COLORS.black,
+  },
+  dateTileMonth: { fontSize: 12, color: COLORS.muted, marginBottom: 4 },
+  dateTilePicker: { alignItems: "center" },
+  tileArrow: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.greenLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: -6,
+    zIndex: 1,
+    borderWidth: 2,
+    borderColor: COLORS.surface,
   },
 
-  /* --- MODAL STYLES --- */
+  /* Day picker */
+  dayPicker: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  dayCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: COLORS.cream,
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayCircleOn: { backgroundColor: COLORS.green, borderColor: COLORS.gold },
+  dayCircleOff: { opacity: 0.35 },
+  dayCircleText: { fontSize: 11, fontWeight: "700", color: COLORS.muted },
+  dayCircleTextOn: { color: COLORS.cream },
+  hintText: { fontSize: 12, color: COLORS.muted, fontStyle: "italic" },
+
+  dayRow: {
+    backgroundColor: COLORS.cream,
+    borderRadius: 14,
+    marginTop: 8,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.creamDark,
+  },
+  dayRowHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+  },
+  dayRowName: { width: 82, fontSize: 14, fontWeight: "700", color: COLORS.black },
+  dayRowTimes: { flex: 1 },
+  dayRowTime: { fontSize: 13, fontWeight: "600", color: COLORS.green },
+  dayRowBreak: { fontSize: 11, color: COLORS.muted, marginTop: 1 },
+  dayRowBody: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.creamDark,
+    backgroundColor: COLORS.surface,
+  },
+
+  /* Service chips */
+  chipScroll: { gap: 10, paddingRight: 4 },
+  skillChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 8,
+    paddingRight: 12,
+    borderRadius: 16,
+    backgroundColor: COLORS.cream,
+    borderWidth: 1.5,
+    borderColor: COLORS.creamDark,
+  },
+  skillChipOn: {
+    backgroundColor: COLORS.greenLight,
+    borderColor: COLORS.green,
+  },
+  skillChipName: { fontSize: 13, fontWeight: "700", color: COLORS.black },
+  skillChipMeta: { fontSize: 11, color: COLORS.muted, marginTop: 1 },
+
+  submitButton: {
+    backgroundColor: COLORS.green,
+    paddingVertical: 16,
+    borderRadius: RADIUS.pill,
+    alignItems: "center",
+  },
+  submitButtonText: { color: COLORS.surface, fontWeight: "700", fontSize: 15 },
+
+  /* Modal */
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(17, 19, 17, 0.58)",
@@ -2578,14 +1882,6 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 24,
     maxHeight: "80%",
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  modalHeader: {
-    marginBottom: 12,
   },
   modalHandle: {
     width: 36,
@@ -2595,25 +1891,16 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 16,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.black,
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: COLORS.muted,
-  },
-  scrollContent: {
-    paddingBottom: 8,
-  },
+  modalHeader: { marginBottom: 12 },
+  modalTitle: { fontFamily: SERIF, fontSize: 22, color: COLORS.black },
+  modalSubtitle: { fontSize: 13, color: COLORS.muted, marginTop: 2 },
   skillOption: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.control,
-    padding: 12,
+    borderRadius: 16,
+    padding: 10,
     marginBottom: 10,
     borderWidth: 1.5,
     borderColor: COLORS.creamDark,
@@ -2622,83 +1909,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.greenLight,
     borderColor: COLORS.gold,
   },
-  skillOptionImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: COLORS.creamDark,
-  },
-  skillOptionImagePlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: COLORS.creamDark,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: COLORS.creamDark,
-  },
-  placeholderText: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: COLORS.light,
-    textAlign: "center",
-  },
-  skillOptionInfo: {
-    flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
-  },
-  skillOptionText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: COLORS.text,
-  },
-  skillOptionTextSelected: {
-    color: COLORS.green,
-  },
-  skillOptionPrice: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: COLORS.green,
-    marginTop: 2,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: COLORS.surface,
-  },
-  checkboxSelected: {
-    backgroundColor: COLORS.green,
-    borderColor: COLORS.green,
-  },
-  checkmark: {
-    color: COLORS.surface,
-    fontSize: 12,
-    fontWeight: "800",
-    lineHeight: 14,
-  },
   closeButton: {
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.green,
     paddingVertical: 14,
-    borderRadius: RADIUS.control,
+    borderRadius: RADIUS.pill,
     marginTop: 12,
-    shadowColor: COLORS.green,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
   },
-  closeButtonText: {
-    color: COLORS.surface,
-    fontSize: 15,
-    fontWeight: "600",
-  },
+  closeButtonText: { color: COLORS.surface, fontSize: 15, fontWeight: "700" },
 });

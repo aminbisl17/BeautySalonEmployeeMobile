@@ -60,19 +60,19 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="QrScanner"
-        options={{
-          title: "Skaneri",
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? "qr-code" : "qr-code-outline"}
-              size={size}
-              color={color}
-            />
-          ),
-        }}
+   <Tabs.Screen
+  name="Terminet"
+  options={{
+    title: "Terminet",
+    tabBarIcon: ({ color, size, focused }) => (
+      <Ionicons
+        name={focused ? "calendar" : "calendar-outline"}
+        size={size}
+        color={color}
       />
+    ),
+  }}
+/>
     </Tabs>
   );
 }
