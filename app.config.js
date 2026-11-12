@@ -1,4 +1,3 @@
-
 import "dotenv/config";
 import appJson from "./app.json";
 
@@ -63,6 +62,8 @@ export default {
       // Services
       API_SHERBIMET_ALL: process.env.API_SHERBIMET_ALL,
       API_SHERBIMET_ATRIBUTET: process.env.API_SHERBIMET_ATRIBUTET,
+      API_TERMINET_STATUS: process.env.API_TERMINET_STATUS,
+      API_TERMINET_UPDATE: process.env.API_TERMINET_UPDATE,
 
       // WebSocket and tenant
       API_WS: process.env.API_WS,

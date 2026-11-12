@@ -205,17 +205,17 @@ export default function Home() {
       {/* Header band */}
 
       <View style={[styles.headerZone, { paddingTop: insets.top + 32 }]}>
-    *    <View style={styles.badgePill}>
+        <View style={styles.badgePill}>
           <Text style={styles.badgePillText}>Ballina</Text>
-        </View> 
+        </View>
 
         <View style={styles.avatarRing}>
-                <View style={styles.avatar}>
-                  <Ionicons name="home-outline" size={34} color={COLORS.goldLight} />
-                </View>
-              </View>
-          <Text style={styles.headerTitle}>Ballina</Text>
-       {/* <Text style={styles.headerTitleSerif}>tuaja</Text> */}
+          <View style={styles.avatar}>
+            <Ionicons name="home-outline" size={34} color={COLORS.goldLight} />
+          </View>
+        </View>
+        <Text style={styles.headerTitle}>Ballina</Text>
+        {/* <Text style={styles.headerTitleSerif}>tuaja</Text> */}
         <Text style={styles.headerSubtitle}>
           Shihni orarin, menaxhoni aftësitë dhe disponueshmërinë.
         </Text>
@@ -356,7 +356,10 @@ export default function Home() {
             </View>
             <View style={styles.legendItem}>
               <View
-                style={[styles.legendDot, { backgroundColor: COLORS.creamDark }]}
+                style={[
+                  styles.legendDot,
+                  { backgroundColor: COLORS.creamDark },
+                ]}
               />
               <Text style={styles.legendText}>E lirë</Text>
             </View>
@@ -407,7 +410,7 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
   },
 
-    avatarRing: {
+  avatarRing: {
     padding: 5,
     marginBottom: 15,
     borderWidth: 1,

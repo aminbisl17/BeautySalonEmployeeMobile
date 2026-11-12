@@ -3,6 +3,7 @@ import {
   cancelTermin,
   completeTermin,
   getTerminet,
+  toLocalDateTime,
   updateTermin,
 } from "@/javascript/employees/TerminetAPI";
 import { subscribeEmployeeAppointments } from "@/javascript/WebSocketClientConnection";
@@ -70,12 +71,21 @@ interface Appointment {
   };
   data_caktimit: string;
   pershkrimi: string;
-  /** Optional: adjust to whatever your backend sends */
+  /** Backend field: PENDING / COMPLETED / CANCELLED */
+  status?: string | null;
+  /** Legacy fallback */
   statusi?: string | null;
+  cancellation_reason?: string | null;
   detajet_terminit: AppointmentDetail[];
 }
 
-type Status = "pending" | "completed" | "cancelled";
+type Status =
+  | "pending"
+  | "confirmed"
+  | "executing"
+  | "completed"
+  | "cancelled"
+  | "no_show";
 
 const MONTHS_SHORT = [
   "Jan",
@@ -94,17 +104,25 @@ const MONTHS_SHORT = [
 
 // Maps whatever the backend sends to one of three states.
 const getStatus = (a: Appointment): Status => {
-  const s = (a.statusi || "").toLowerCase();
+  const s = (a.status || a.statusi || "").toLowerCase();
+
   if (s.includes("anul") || s.includes("cancel")) return "cancelled";
+  if (s.includes("no_show") || s.includes("no-show")) return "no_show";
+  if (s.includes("execut") || s.includes("në proces")) return "executing";
+  if (s.includes("confirm")) return "confirmed";
   if (s.includes("perfund") || s.includes("përfund") || s.includes("complet"))
     return "completed";
+
   return "pending";
 };
 
 const STATUS_LABEL: Record<Status, string> = {
   pending: "Në pritje",
+  confirmed: "Konfirmuar",
+  executing: "Në proces",
   completed: "Përfunduar",
   cancelled: "Anuluar",
+  no_show: "Nuk u paraqit",
 };
 
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -120,6 +138,8 @@ export default function Terminet() {
   // Details sheet
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [isModifying, setIsModifying] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
   const [editDate, setEditDate] = useState<Date>(new Date());
   const [editNote, setEditNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -159,6 +179,7 @@ export default function Terminet() {
     try {
       setLoading(true);
       const data = await getTerminet();
+      console.log("APPOINTMENTS FROM API:", JSON.stringify(data, null, 2));
       setAppointments(data || []);
     } catch (err) {
       console.error(err);
@@ -212,11 +233,15 @@ export default function Terminet() {
   const openDetails = (a: Appointment) => {
     setSelectedId(a.id_terminit);
     setIsModifying(false);
+    setIsCancelling(false);
+    setCancelReason("");
   };
 
   const closeDetails = () => {
     setSelectedId(null);
     setIsModifying(false);
+    setIsCancelling(false);
+    setCancelReason("");
     setBusy(false);
   };
 
@@ -234,6 +259,9 @@ export default function Terminet() {
       prev.map((a) => (a.id_terminit === id ? { ...a, ...patch } : a)),
     );
 
+  const errorText = (e: unknown, fallback: string) =>
+    e instanceof Error && e.message ? e.message : fallback;
+
   const confirmComplete = (a: Appointment) => {
     Alert.alert(
       "Përfundo terminin",
@@ -246,10 +274,13 @@ export default function Terminet() {
             try {
               setBusy(true);
               await completeTermin(a.id_terminit);
-              patchLocal(a.id_terminit, { statusi: "completed" });
+              patchLocal(a.id_terminit, { status: "COMPLETED" });
             } catch (e) {
               console.error(e);
-              Alert.alert("Gabim", "Termini nuk u përfundua. Provoni përsëri.");
+              Alert.alert(
+                "Gabim",
+                errorText(e, "Termini nuk u përfundua. Provoni përsëri."),
+              );
             } finally {
               setBusy(false);
             }
@@ -259,48 +290,51 @@ export default function Terminet() {
     );
   };
 
-  const confirmCancel = (a: Appointment) => {
-    Alert.alert(
-      "Anulo terminin",
-      `Të anulohet termini i ${a.client.emri} ${a.client.mbiemri}? Ky veprim nuk kthehet.`,
-      [
-        { text: "Jo", style: "cancel" },
-        {
-          text: "Anulo terminin",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setBusy(true);
-              await cancelTermin(a.id_terminit);
-              patchLocal(a.id_terminit, { statusi: "cancelled" });
-            } catch (e) {
-              console.error(e);
-              Alert.alert("Gabim", "Termini nuk u anulua. Provoni përsëri.");
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ],
-    );
+  const submitCancel = async (a: Appointment) => {
+    const reason = cancelReason.trim();
+    if (!reason) {
+      Alert.alert("Kujdes", "Shkruaj arsyen e anulimit.");
+      return;
+    }
+    try {
+      setBusy(true);
+      await cancelTermin(a.id_terminit, reason);
+      patchLocal(a.id_terminit, {
+        status: "CANCELLED",
+        cancellation_reason: reason,
+      });
+      setIsCancelling(false);
+      setCancelReason("");
+    } catch (e) {
+      console.error(e);
+      Alert.alert(
+        "Gabim",
+        errorText(e, "Termini nuk u anulua. Provoni përsëri."),
+      );
+    } finally {
+      setBusy(false);
+    }
   };
 
   const saveModify = async (a: Appointment) => {
     try {
       setBusy(true);
-      const iso = editDate.toISOString();
+      const localDate = toLocalDateTime(editDate);
       await updateTermin(a.id_terminit, {
-        data_caktimit: iso,
+        data_caktimit: localDate,
         pershkrimi: editNote.trim(),
       });
       patchLocal(a.id_terminit, {
-        data_caktimit: iso,
+        data_caktimit: localDate,
         pershkrimi: editNote.trim(),
       });
       setIsModifying(false);
     } catch (e) {
       console.error(e);
-      Alert.alert("Gabim", "Ndryshimet nuk u ruajtën. Provoni përsëri.");
+      Alert.alert(
+        "Gabim",
+        errorText(e, "Ndryshimet nuk u ruajtën. Provoni përsëri."),
+      );
     } finally {
       setBusy(false);
     }
@@ -345,8 +379,9 @@ export default function Terminet() {
             <View
               style={[
                 styles.statusPill,
-                status === "completed" && styles.statusCompleted,
-                status === "cancelled" && styles.statusCancelled,
+                status === "confirmed" && styles.statusConfirmed,
+                status === "executing" && styles.statusExecuting,
+                status === "no_show" && styles.statusNoShow,
               ]}
             >
               <Text
@@ -380,6 +415,139 @@ export default function Terminet() {
   };
 
   // ---------- Details sheet ----------
+
+  const renderActions = (a: Appointment, status: Status) => {
+    if (status !== "pending") {
+      return (
+        <View>
+          <View style={styles.finalNote}>
+            <Ionicons
+              name={
+                status === "completed" ? "checkmark-circle" : "close-circle"
+              }
+              size={18}
+              color={status === "completed" ? COLORS.green : COLORS.red}
+            />
+            <Text style={styles.finalNoteText}>
+              Ky termin është {STATUS_LABEL[status].toLowerCase()}.
+            </Text>
+          </View>
+          {status === "cancelled" && a.cancellation_reason ? (
+            <Text
+              style={[
+                styles.sheetSubtitle,
+                { textAlign: "center", marginTop: 8 },
+              ]}
+            >
+              Arsyeja: {a.cancellation_reason}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+
+    if (isCancelling) {
+      const reasonEmpty = !cancelReason.trim();
+      return (
+        <View style={styles.actionsWrap}>
+          <Text style={styles.sectionLabel}>ARSYEJA E ANULIMIT</Text>
+          <TextInput
+            value={cancelReason}
+            onChangeText={setCancelReason}
+            placeholder="Shkruaj arsyen e anulimit"
+            placeholderTextColor={COLORS.light}
+            multiline
+            autoFocus
+            style={styles.noteInput}
+          />
+          <View style={[styles.secondaryRow, { marginTop: 0 }]}>
+            <Pressable
+              style={[styles.secondaryAction, styles.ghostAction]}
+              disabled={busy}
+              onPress={() => {
+                setIsCancelling(false);
+                setCancelReason("");
+              }}
+            >
+              <Text
+                style={[styles.secondaryActionText, { color: COLORS.muted }]}
+              >
+                Kthehu
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[
+                styles.secondaryAction,
+                styles.dangerAction,
+                (busy || reasonEmpty) && { opacity: 0.6 },
+              ]}
+              disabled={busy || reasonEmpty}
+              onPress={() => submitCancel(a)}
+            >
+              {busy ? (
+                <ActivityIndicator color={COLORS.red} />
+              ) : (
+                <Text
+                  style={[styles.secondaryActionText, { color: COLORS.red }]}
+                >
+                  Konfirmo anulimin
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.actionsWrap}>
+        <Pressable
+          style={[styles.primaryAction, busy && { opacity: 0.6 }]}
+          disabled={busy}
+          onPress={() => confirmComplete(a)}
+        >
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={20}
+            color={COLORS.surface}
+          />
+          <Text style={styles.primaryActionText}>Përfundo terminin</Text>
+        </Pressable>
+
+        <View style={[styles.secondaryRow, { marginTop: 0 }]}>
+          <Pressable
+            style={[styles.secondaryAction, busy && { opacity: 0.6 }]}
+            disabled={busy}
+            onPress={() => startModify(a)}
+          >
+            <Ionicons name="create-outline" size={18} color={COLORS.green} />
+            <Text style={[styles.secondaryActionText, { color: COLORS.green }]}>
+              Ndrysho
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.secondaryAction,
+              styles.dangerAction,
+              busy && { opacity: 0.6 },
+            ]}
+            disabled={busy}
+            onPress={() => setIsCancelling(true)}
+          >
+            <Ionicons
+              name="close-circle-outline"
+              size={18}
+              color={COLORS.red}
+            />
+            <Text style={[styles.secondaryActionText, { color: COLORS.red }]}>
+              Anulo
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  };
 
   const renderDetailsBody = (a: Appointment) => {
     const status = getStatus(a);
@@ -495,7 +663,7 @@ export default function Terminet() {
                         {detail.kohezgjatja} min
                       </Text>
                     </View>
-                    {attributesList.length > 0 && (
+                    {attributesList.length > 0 ? (
                       <View style={styles.metaRow}>
                         <Ionicons
                           name={isExpanded ? "chevron-up" : "chevron-down"}
@@ -506,22 +674,22 @@ export default function Terminet() {
                           {isExpanded ? "Fshih Atributet" : "Shfaq Atributet"}
                         </Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
 
                   <View style={styles.attributePriceContainer}>
                     <Text style={styles.skillPrice}>
                       {detail.pagesa.toFixed(2)} €
                     </Text>
-                    {hasDiscount && (
+                    {hasDiscount ? (
                       <Text style={styles.attributeOriginalPrice}>
                         {service.qmimi_baze.toFixed(2)} €
                       </Text>
-                    )}
+                    ) : null}
                   </View>
                 </TouchableOpacity>
 
-                {isExpanded && (
+                {isExpanded ? (
                   <View style={styles.attributesSection}>
                     {attributesList.map((attr, idx) => (
                       <View key={attr.id || idx} style={styles.attributeCard}>
@@ -536,11 +704,12 @@ export default function Terminet() {
                               </Text>
                             ) : null}
                           </View>
-                          {attr.qmimi_baze !== undefined && (
+                          {attr.qmimi_baze !== undefined &&
+                          attr.qmimi_baze !== null ? (
                             <Text style={styles.attributePrice}>
-                              +{attr.qmimi_baze.toFixed(2)} €
+                              +{Number(attr.qmimi_baze).toFixed(2)} €
                             </Text>
-                          )}
+                          ) : null}
                         </View>
                         {attr.pershkrimi ? (
                           <Text style={styles.attributeDescription}>
@@ -550,7 +719,7 @@ export default function Terminet() {
                       </View>
                     ))}
                   </View>
-                )}
+                ) : null}
               </View>
             );
           })}
@@ -563,73 +732,7 @@ export default function Terminet() {
         </View>
 
         {/* Actions */}
-        {status === "pending" ? (
-          <View style={styles.actionsWrap}>
-            <Pressable
-              style={[styles.primaryAction, busy && { opacity: 0.6 }]}
-              disabled={busy}
-              onPress={() => confirmComplete(a)}
-            >
-              <Ionicons
-                name="checkmark-circle-outline"
-                size={20}
-                color={COLORS.surface}
-              />
-              <Text style={styles.primaryActionText}>Përfundo terminin</Text>
-            </Pressable>
-
-            <View style={styles.secondaryRow}>
-              <Pressable
-                style={[styles.secondaryAction, busy && { opacity: 0.6 }]}
-                disabled={busy}
-                onPress={() => startModify(a)}
-              >
-                <Ionicons
-                  name="create-outline"
-                  size={18}
-                  color={COLORS.green}
-                />
-                <Text style={[styles.secondaryActionText, { color: COLORS.green }]}>
-                  Ndrysho
-                </Text>
-              </Pressable>
-
-              <Pressable
-                style={[
-                  styles.secondaryAction,
-                  styles.dangerAction,
-                  busy && { opacity: 0.6 },
-                ]}
-                disabled={busy}
-                onPress={() => confirmCancel(a)}
-              >
-                <Ionicons
-                  name="close-circle-outline"
-                  size={18}
-                  color={COLORS.red}
-                />
-                <Text style={[styles.secondaryActionText, { color: COLORS.red }]}>
-                  Anulo
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.finalNote}>
-            <Ionicons
-              name={
-                status === "completed"
-                  ? "checkmark-circle"
-                  : "close-circle"
-              }
-              size={18}
-              color={status === "completed" ? COLORS.green : COLORS.red}
-            />
-            <Text style={styles.finalNoteText}>
-              Ky termin është {STATUS_LABEL[status].toLowerCase()}.
-            </Text>
-          </View>
-        )}
+        {renderActions(a, status)}
       </>
     );
   };
@@ -698,7 +801,7 @@ export default function Terminet() {
           onPress={() => setIsModifying(false)}
         >
           <Text style={[styles.secondaryActionText, { color: COLORS.muted }]}>
-            Anulo
+            Kthehu
           </Text>
         </Pressable>
         <Pressable
@@ -713,7 +816,9 @@ export default function Terminet() {
           {busy ? (
             <ActivityIndicator color={COLORS.surface} />
           ) : (
-            <Text style={[styles.secondaryActionText, { color: COLORS.surface }]}>
+            <Text
+              style={[styles.secondaryActionText, { color: COLORS.surface }]}
+            >
               Ruaj ndryshimet
             </Text>
           )}
@@ -784,7 +889,16 @@ export default function Terminet() {
         visible={!!selected}
         transparent
         animationType="slide"
-        onRequestClose={() => (isModifying ? setIsModifying(false) : closeDetails())}
+        onRequestClose={() => {
+          if (isCancelling) {
+            setIsCancelling(false);
+            setCancelReason("");
+          } else if (isModifying) {
+            setIsModifying(false);
+          } else {
+            closeDetails();
+          }
+        }}
       >
         <View style={styles.modalOverlay}>
           <Pressable style={{ flex: 1 }} onPress={closeDetails} />
@@ -816,10 +930,11 @@ export default function Terminet() {
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingBottom: 8 }}
               >
-                {selected &&
-                  (isModifying
+                {selected
+                  ? isModifying
                     ? renderModifyBody(selected)
-                    : renderDetailsBody(selected))}
+                    : renderDetailsBody(selected)
+                  : null}
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
@@ -1221,6 +1336,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "600",
     letterSpacing: -0.9,
+  },
+
+  statusConfirmed: {
+    backgroundColor: "#E8F0EA",
+    borderColor: "#B8CCBD",
+  },
+  statusExecuting: {
+    backgroundColor: "#F3EBDD",
+    borderColor: "#D9C49D",
+  },
+  statusNoShow: {
+    backgroundColor: "#F5E9E7",
+    borderColor: "#DCC1BC",
   },
 
   /* Actions */
