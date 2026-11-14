@@ -5,6 +5,7 @@ import {
   getTerminet,
   toLocalDateTime,
   updateTermin,
+  updateTerminStatus,
 } from "@/javascript/employees/TerminetAPI";
 import { subscribeEmployeeAppointments } from "@/javascript/WebSocketClientConnection";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +15,6 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -71,7 +71,7 @@ interface Appointment {
   };
   data_caktimit: string;
   pershkrimi: string;
-  /** Backend field: PENDING / COMPLETED / CANCELLED */
+  /** Backend field: PENDING / CONFIRMED / EXECUTING / COMPLETED / CANCELLED / NO_SHOW */
   status?: string | null;
   /** Legacy fallback */
   statusi?: string | null;
@@ -86,6 +86,12 @@ type Status =
   | "completed"
   | "cancelled"
   | "no_show";
+
+type PrimaryAction = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  run: () => void;
+};
 
 const MONTHS_SHORT = [
   "Jan",
@@ -102,7 +108,7 @@ const MONTHS_SHORT = [
   "Dhj",
 ];
 
-// Maps whatever the backend sends to one of three states.
+// Maps whatever the backend sends to one of the known states.
 const getStatus = (a: Appointment): Status => {
   const s = (a.status || a.statusi || "").toLowerCase();
 
@@ -125,8 +131,13 @@ const STATUS_LABEL: Record<Status, string> = {
   no_show: "Nuk u paraqit",
 };
 
+const FINAL_STATUSES: Status[] = ["completed", "cancelled", "no_show"];
+
 const pad = (n: number) => String(n).padStart(2, "0");
 const formatTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+const byDate = (a: Appointment, b: Appointment) =>
+  new Date(a.data_caktimit).getTime() - new Date(b.data_caktimit).getTime();
 
 export default function Terminet() {
   const insets = useSafeAreaInsets();
@@ -143,6 +154,10 @@ export default function Terminet() {
   const [editDate, setEditDate] = useState<Date>(new Date());
   const [editNote, setEditNote] = useState("");
   const [busy, setBusy] = useState(false);
+  // id of the appointment whose status is currently being changed
+  const [actingId, setActingId] = useState<number | null>(null);
+
+  const isBusy = busy || actingId !== null;
 
   const selected =
     appointments.find((a) => a.id_terminit === selectedId) ?? null;
@@ -179,7 +194,6 @@ export default function Terminet() {
     try {
       setLoading(true);
       const data = await getTerminet();
-      console.log("APPOINTMENTS FROM API:", JSON.stringify(data, null, 2));
       setAppointments(data || []);
     } catch (err) {
       console.error(err);
@@ -237,6 +251,14 @@ export default function Terminet() {
     setCancelReason("");
   };
 
+  // Opens the sheet straight on the cancellation-reason form
+  const openCancel = (a: Appointment) => {
+    setSelectedId(a.id_terminit);
+    setIsModifying(false);
+    setIsCancelling(true);
+    setCancelReason("");
+  };
+
   const closeDetails = () => {
     setSelectedId(null);
     setIsModifying(false);
@@ -262,6 +284,29 @@ export default function Terminet() {
   const errorText = (e: unknown, fallback: string) =>
     e instanceof Error && e.message ? e.message : fallback;
 
+  const changeStatus = async (
+    a: Appointment,
+    status: "CONFIRMED" | "EXECUTING",
+    fallbackError: string,
+  ) => {
+    try {
+      setActingId(a.id_terminit);
+      await updateTerminStatus(a.id_terminit, status);
+      patchLocal(a.id_terminit, { status });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Gabim", errorText(e, fallbackError));
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  const confirmAppointment = (a: Appointment) =>
+    changeStatus(a, "CONFIRMED", "Termini nuk u konfirmua. Provoni përsëri.");
+
+  const executeAppointment = (a: Appointment) =>
+    changeStatus(a, "EXECUTING", "Termini nuk filloi. Provoni përsëri.");
+
   const confirmComplete = (a: Appointment) => {
     Alert.alert(
       "Përfundo terminin",
@@ -272,7 +317,7 @@ export default function Terminet() {
           text: "Përfundo",
           onPress: async () => {
             try {
-              setBusy(true);
+              setActingId(a.id_terminit);
               await completeTermin(a.id_terminit);
               patchLocal(a.id_terminit, { status: "COMPLETED" });
             } catch (e) {
@@ -282,7 +327,7 @@ export default function Terminet() {
                 errorText(e, "Termini nuk u përfundua. Provoni përsëri."),
               );
             } finally {
-              setBusy(false);
+              setActingId(null);
             }
           },
         },
@@ -340,9 +385,85 @@ export default function Terminet() {
     }
   };
 
+  // ---------- Status buttons (shared by cards and the details sheet) ----------
+  //   pending   -> KONFIRMO + ANULO
+  //   confirmed -> EKZEKUTO + ANULO
+  //   executing -> PËRFUNDO + ANULO
+
+  const renderStatusButtons = (
+    a: Appointment,
+    status: Status,
+    onCancel: () => void,
+  ) => {
+    const primaryByStatus: Partial<Record<Status, PrimaryAction>> = {
+      pending: {
+        label: "KONFIRMO",
+        icon: "checkmark-circle-outline",
+        run: () => confirmAppointment(a),
+      },
+      confirmed: {
+        label: "EKZEKUTO",
+        icon: "play-circle-outline",
+        run: () => executeAppointment(a),
+      },
+      executing: {
+        label: "PËRFUNDO",
+        icon: "checkmark-done-outline",
+        run: () => confirmComplete(a),
+      },
+    };
+
+    const primary = primaryByStatus[status];
+    if (!primary) return null;
+
+    const thisActing = actingId === a.id_terminit;
+
+    return (
+      <View style={styles.statusBtnRow}>
+        <Pressable
+          style={[
+            styles.statusBtn,
+            styles.statusBtnPrimary,
+            isBusy && { opacity: 0.6 },
+          ]}
+          disabled={isBusy}
+          onPress={primary.run}
+        >
+          {thisActing ? (
+            <ActivityIndicator color={COLORS.surface} />
+          ) : (
+            <>
+              <Ionicons name={primary.icon} size={17} color={COLORS.surface} />
+              <Text
+                style={[styles.statusBtnText, { color: COLORS.surface }]}
+              >
+                {primary.label}
+              </Text>
+            </>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={[
+            styles.statusBtn,
+            styles.statusBtnDanger,
+            isBusy && { opacity: 0.6 },
+          ]}
+          disabled={isBusy}
+          onPress={onCancel}
+        >
+          <Ionicons name="close-circle-outline" size={17} color={COLORS.red} />
+          <Text style={[styles.statusBtnText, { color: COLORS.red }]}>
+            ANULO
+          </Text>
+        </Pressable>
+      </View>
+    );
+  };
+
   // ---------- Summary card ----------
 
-  const renderAppointmentItem = ({ item }: { item: Appointment }) => {
+  const renderAppointmentItem = (item: Appointment) => {
     const status = getStatus(item);
     const d = new Date(item.data_caktimit);
     const valid = !isNaN(d.getTime());
@@ -350,74 +471,114 @@ export default function Terminet() {
     const names = item.detajet_terminit
       .map((x) => x.sherbimet.emri_sherbimit)
       .join(", ");
+    const isFinal = FINAL_STATUSES.includes(status);
 
     return (
-      <Pressable
-        onPress={() => openDetails(item)}
-        style={({ pressed }) => [
-          styles.card,
-          status !== "pending" && styles.cardMuted,
-          pressed && styles.cardPressed,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`Shiko detajet e terminit të ${item.client.emri} ${item.client.mbiemri}`}
+      <View
+        key={item.id_terminit}
+        style={[styles.card, isFinal && styles.cardMuted]}
       >
-        <View style={styles.dateRail}>
-          <Text style={styles.dateRailDay}>{valid ? d.getDate() : "–"}</Text>
-          <Text style={styles.dateRailMonth}>
-            {valid ? MONTHS_SHORT[d.getMonth()] : ""}
-          </Text>
-          <View style={styles.railDivider} />
-          <Text style={styles.dateRailTime}>{valid ? formatTime(d) : ""}</Text>
-        </View>
-
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={styles.cardTopRow}>
-            <Text style={styles.clientName} numberOfLines={1}>
-              {item.client.emri} {item.client.mbiemri}
+        <Pressable
+          onPress={() => openDetails(item)}
+          style={({ pressed }) => [styles.cardRow, pressed && styles.cardPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={`Shiko detajet e terminit të ${item.client.emri} ${item.client.mbiemri}`}
+        >
+          <View style={styles.dateRail}>
+            <Text style={styles.dateRailDay}>{valid ? d.getDate() : "–"}</Text>
+            <Text style={styles.dateRailMonth}>
+              {valid ? MONTHS_SHORT[d.getMonth()] : ""}
             </Text>
-            <View
-              style={[
-                styles.statusPill,
-                status === "confirmed" && styles.statusConfirmed,
-                status === "executing" && styles.statusExecuting,
-                status === "no_show" && styles.statusNoShow,
-              ]}
-            >
-              <Text
+            <View style={styles.railDivider} />
+            <Text style={styles.dateRailTime}>
+              {valid ? formatTime(d) : ""}
+            </Text>
+          </View>
+
+          <View style={{ flex: 1, gap: 4 }}>
+            <View style={styles.cardTopRow}>
+              <Text style={styles.clientName} numberOfLines={1}>
+                {item.client.emri} {item.client.mbiemri}
+              </Text>
+              <View
                 style={[
-                  styles.statusText,
-                  status === "completed" && { color: COLORS.green },
-                  status === "cancelled" && { color: COLORS.red },
+                  styles.statusPill,
+                  status === "confirmed" && styles.statusConfirmed,
+                  status === "executing" && styles.statusExecuting,
+                  status === "no_show" && styles.statusNoShow,
                 ]}
               >
-                {STATUS_LABEL[status]}
+                <Text
+                  style={[
+                    styles.statusText,
+                    status === "completed" && { color: COLORS.green },
+                    status === "cancelled" && { color: COLORS.red },
+                  ]}
+                >
+                  {STATUS_LABEL[status]}
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.servicesPreview} numberOfLines={1}>
+              {names || "Pa shërbime"}
+            </Text>
+
+            <View style={styles.cardBottomRow}>
+              <Text style={styles.metaText}>
+                {item.detajet_terminit.length} shërbime ·{" "}
+                {calculateDuration(item.detajet_terminit)} min
               </Text>
+              <Text style={styles.cardTotal}>{total.toFixed(2)} €</Text>
             </View>
           </View>
 
-          <Text style={styles.servicesPreview} numberOfLines={1}>
-            {names || "Pa shërbime"}
-          </Text>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.light} />
+        </Pressable>
 
-          <View style={styles.cardBottomRow}>
-            <Text style={styles.metaText}>
-              {item.detajet_terminit.length} shërbime ·{" "}
-              {calculateDuration(item.detajet_terminit)} min
-            </Text>
-            <Text style={styles.cardTotal}>{total.toFixed(2)} €</Text>
+        {!isFinal ? (
+          <View style={styles.cardActions}>
+            {renderStatusButtons(item, status, () => openCancel(item))}
+          </View>
+        ) : null}
+      </View>
+    );
+  };
+
+  // ---------- Panels ----------
+
+  const renderPanel = (
+    title: string,
+    items: Appointment[],
+    emptyText: string,
+    alwaysShow = true,
+  ) => {
+    if (!alwaysShow && items.length === 0) return null;
+
+    return (
+      <View style={styles.panel}>
+        <View style={styles.panelHeader}>
+          <Text style={styles.panelTitle}>{title}</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{items.length}</Text>
           </View>
         </View>
 
-        <Ionicons name="chevron-forward" size={18} color={COLORS.light} />
-      </Pressable>
+        {items.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.noSkillsText}>{emptyText}</Text>
+          </View>
+        ) : (
+          <View style={{ gap: 12 }}>{items.map(renderAppointmentItem)}</View>
+        )}
+      </View>
     );
   };
 
   // ---------- Details sheet ----------
 
   const renderActions = (a: Appointment, status: Status) => {
-    if (status !== "pending") {
+    if (FINAL_STATUSES.includes(status)) {
       return (
         <View>
           <View style={styles.finalNote}>
@@ -501,23 +662,12 @@ export default function Terminet() {
 
     return (
       <View style={styles.actionsWrap}>
-        <Pressable
-          style={[styles.primaryAction, busy && { opacity: 0.6 }]}
-          disabled={busy}
-          onPress={() => confirmComplete(a)}
-        >
-          <Ionicons
-            name="checkmark-circle-outline"
-            size={20}
-            color={COLORS.surface}
-          />
-          <Text style={styles.primaryActionText}>Përfundo terminin</Text>
-        </Pressable>
+        {renderStatusButtons(a, status, () => setIsCancelling(true))}
 
-        <View style={[styles.secondaryRow, { marginTop: 0 }]}>
+        {status !== "executing" ? (
           <Pressable
-            style={[styles.secondaryAction, busy && { opacity: 0.6 }]}
-            disabled={busy}
+            style={[styles.secondaryAction, isBusy && { opacity: 0.6 }]}
+            disabled={isBusy}
             onPress={() => startModify(a)}
           >
             <Ionicons name="create-outline" size={18} color={COLORS.green} />
@@ -525,26 +675,7 @@ export default function Terminet() {
               Ndrysho
             </Text>
           </Pressable>
-
-          <Pressable
-            style={[
-              styles.secondaryAction,
-              styles.dangerAction,
-              busy && { opacity: 0.6 },
-            ]}
-            disabled={busy}
-            onPress={() => setIsCancelling(true)}
-          >
-            <Ionicons
-              name="close-circle-outline"
-              size={18}
-              color={COLORS.red}
-            />
-            <Text style={[styles.secondaryActionText, { color: COLORS.red }]}>
-              Anulo
-            </Text>
-          </Pressable>
-        </View>
+        ) : null}
       </View>
     );
   };
@@ -827,6 +958,21 @@ export default function Terminet() {
     </>
   );
 
+  // ---------- Grouping ----------
+
+  const toConfirm = appointments
+    .filter((a) => getStatus(a) === "pending")
+    .sort(byDate);
+  const confirmed = appointments
+    .filter((a) => {
+      const s = getStatus(a);
+      return s === "confirmed" || s === "executing";
+    })
+    .sort(byDate);
+  const closed = appointments
+    .filter((a) => FINAL_STATUSES.includes(getStatus(a)))
+    .sort((a, b) => byDate(b, a));
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -866,20 +1012,19 @@ export default function Terminet() {
               style={{ marginTop: 40 }}
             />
           ) : (
-            <FlatList
-              data={appointments}
-              renderItem={renderAppointmentItem}
-              keyExtractor={(item) => item.id_terminit.toString()}
-              scrollEnabled={false}
-              ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-              ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Text style={styles.noSkillsText}>
-                    Nuk ka termine të caktuara.
-                  </Text>
-                </View>
-              }
-            />
+            <>
+              {renderPanel(
+                "Terminet për t'u konfirmuar",
+                toConfirm,
+                "Nuk ka termine për t'u konfirmuar.",
+              )}
+              {renderPanel(
+                "Terminet e konfirmuara",
+                confirmed,
+                "Nuk ka termine të konfirmuara.",
+              )}
+              {renderPanel("Historiku", closed, "", false)}
+            </>
           )}
         </View>
       </ScrollView>
@@ -1006,14 +1151,26 @@ const styles = StyleSheet.create({
   },
   body: { marginHorizontal: 12, marginTop: -34 },
 
-  /* Summary card */
-  card: {
+  /* Panels */
+  panel: { marginBottom: 24 },
+  panelHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    justifyContent: "space-between",
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  panelTitle: {
+    flex: 1,
+    fontFamily: SERIF,
+    fontSize: 20,
+    color: COLORS.black,
+  },
+
+  /* Summary card */
+  card: {
     backgroundColor: "rgba(255, 255, 255, 0.94)",
     borderRadius: RADIUS.card,
-    padding: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
     shadowColor: COLORS.black,
@@ -1022,8 +1179,16 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 3,
   },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: RADIUS.card,
+  },
+  cardActions: { paddingHorizontal: 14, paddingBottom: 14 },
   cardMuted: { opacity: 0.72 },
-  cardPressed: { transform: [{ scale: 0.99 }], borderColor: COLORS.goldSoft },
+  cardPressed: { opacity: 0.85 },
   dateRail: {
     width: 58,
     alignItems: "center",
@@ -1066,14 +1231,6 @@ const styles = StyleSheet.create({
     borderColor: COLORS.goldSoft,
     backgroundColor: COLORS.cream,
   },
-  statusCompleted: {
-    backgroundColor: COLORS.greenLight,
-    borderColor: COLORS.infoBorder,
-  },
-  statusCancelled: {
-    backgroundColor: COLORS.dangerBg,
-    borderColor: COLORS.dangerBorder,
-  },
   statusText: { fontSize: 10, fontWeight: "700", color: COLORS.gold },
   servicesPreview: { fontSize: 13, color: COLORS.muted },
   cardBottomRow: {
@@ -1088,6 +1245,28 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: -0.3,
   },
+
+  /* Status buttons */
+  statusBtnRow: { flexDirection: "row", gap: 10 },
+  statusBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+  },
+  statusBtnPrimary: {
+    backgroundColor: COLORS.green,
+    borderColor: COLORS.green,
+  },
+  statusBtnDanger: {
+    backgroundColor: COLORS.dangerBg,
+    borderColor: COLORS.dangerBorder,
+  },
+  statusBtnText: { fontSize: 12, fontWeight: "800", letterSpacing: 0.8 },
 
   /* Sheet */
   modalOverlay: {
@@ -1353,20 +1532,6 @@ const styles = StyleSheet.create({
 
   /* Actions */
   actionsWrap: { marginTop: 16, gap: 10 },
-  primaryAction: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.green,
-  },
-  primaryActionText: {
-    color: COLORS.surface,
-    fontSize: 15,
-    fontWeight: "700",
-  },
   secondaryRow: { flexDirection: "row", gap: 10, marginTop: 10 },
   secondaryAction: {
     flex: 1,
@@ -1439,7 +1604,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 150,
+    minHeight: 90,
     padding: 24,
     borderWidth: 1,
     borderStyle: "dashed",
